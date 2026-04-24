@@ -40,6 +40,7 @@ export interface Chef {
   location: string;
   priceForTwo: number;
   isVeg: boolean;
+  featured?: boolean;
 }
 
 export type DishSpiceLevel =
@@ -80,6 +81,7 @@ export interface Product {
   categoryId: number;
   categoryName: string;
   inStock: boolean;
+  essential?: boolean;
 }
 
 export interface Offer {
@@ -120,6 +122,73 @@ export interface Address {
   city: string;
   pincode: string;
   landmark?: string;
+}
+
+export interface MeResponse {
+  id?: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  imageUrl?: string;
+  isAdmin: boolean;
+}
+
+export type AdminStatsOrdersByStatus = { [key: string]: number };
+
+export type AdminStatsRevenueByDayItem = {
+  day: string;
+  revenue: number;
+  orders: number;
+};
+
+export interface AdminStats {
+  totalOrders: number;
+  totalRevenue: number;
+  totalProducts: number;
+  totalChefs: number;
+  ordersByStatus: AdminStatsOrdersByStatus;
+  revenueByDay: AdminStatsRevenueByDayItem[];
+}
+
+export type UpdateOrderStatusRequestStatus =
+  (typeof UpdateOrderStatusRequestStatus)[keyof typeof UpdateOrderStatusRequestStatus];
+
+export const UpdateOrderStatusRequestStatus = {
+  placed: "placed",
+  preparing: "preparing",
+  out_for_delivery: "out_for_delivery",
+  delivered: "delivered",
+  cancelled: "cancelled",
+} as const;
+
+export interface UpdateOrderStatusRequest {
+  status: UpdateOrderStatusRequestStatus;
+}
+
+export interface UpsertChefRequest {
+  name: string;
+  tagline: string;
+  cuisine: string;
+  rating: number;
+  etaMinutes: number;
+  deliveryFee: number;
+  imageUrl: string;
+  location: string;
+  priceForTwo: number;
+  isVeg: boolean;
+  featured?: boolean;
+}
+
+export interface UpsertProductRequest {
+  name: string;
+  description: string;
+  price: number;
+  mrp: number;
+  unit: string;
+  imageUrl: string;
+  categoryId: number;
+  inStock?: boolean;
+  essential?: boolean;
 }
 
 export type CreateOrderRequestPaymentMethod =
@@ -212,6 +281,10 @@ export type ListProductsParams = {
 
 export type SearchAllParams = {
   q: string;
+};
+
+export type AdminListOrdersParams = {
+  status?: string;
 };
 
 export type ListOrdersParams = {

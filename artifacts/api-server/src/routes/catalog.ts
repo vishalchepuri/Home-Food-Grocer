@@ -30,6 +30,7 @@ function chefRow(c: typeof chefsTable.$inferSelect) {
     location: c.location,
     priceForTwo: Number(c.priceForTwo),
     isVeg: c.isVeg,
+    featured: c.featured,
   };
 }
 
@@ -66,6 +67,7 @@ function productRow(
     categoryId: p.categoryId,
     categoryName,
     inStock: p.inStock,
+    essential: p.essential,
   };
 }
 

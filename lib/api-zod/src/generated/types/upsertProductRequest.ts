@@ -6,8 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface Product {
-  id: number;
+export interface UpsertProductRequest {
   name: string;
   description: string;
   price: number;
@@ -15,7 +14,6 @@ export interface Product {
   unit: string;
   imageUrl: string;
   categoryId: number;
-  categoryName: string;
-  inStock: boolean;
+  inStock?: boolean;
   essential?: boolean;
 }

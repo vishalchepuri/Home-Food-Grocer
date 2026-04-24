@@ -1,13 +1,13 @@
 import { Link, useLocation } from "wouter";
-import { Search, ShoppingBag, MapPin, Menu, User } from "lucide-react";
+import { Search, ShoppingBag, MapPin } from "lucide-react";
 import { useCart } from "@/hooks/use-cart";
 import { Button } from "@/components/ui/button";
+import { UserMenu } from "@/components/UserMenu";
 
 export function AppHeader() {
   const { totals } = useCart();
   const [location] = useLocation();
 
-  // Don't show header on checkout
   if (location === "/checkout") return null;
 
   return (
@@ -24,29 +24,35 @@ export function AppHeader() {
           </Link>
           <div className="hidden md:flex items-center text-sm text-muted-foreground hover:text-foreground cursor-pointer gap-1 transition-colors">
             <MapPin className="w-4 h-4 text-primary" />
-            <span className="font-medium underline decoration-primary/30 decoration-dashed underline-offset-4">Bangalore</span>
+            <span className="font-medium underline decoration-primary/30 decoration-dashed underline-offset-4">
+              Bangalore
+            </span>
           </div>
         </div>
 
         <div className="flex-1 max-w-md hidden sm:block">
-          <Link href="/search" className="flex items-center gap-2 bg-muted/50 hover:bg-muted px-4 py-2.5 rounded-full text-sm text-muted-foreground transition-colors border border-transparent hover:border-border">
+          <Link
+            href="/search"
+            className="flex items-center gap-2 bg-muted/50 hover:bg-muted px-4 py-2.5 rounded-full text-sm text-muted-foreground transition-colors border border-transparent hover:border-border"
+          >
             <Search className="w-4 h-4" />
             <span>Search for dishes, chefs, or groceries...</span>
           </Link>
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-4">
-          <Link href="/search" className="sm:hidden p-2 text-muted-foreground hover:text-foreground">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <Link
+            href="/search"
+            className="sm:hidden p-2 text-muted-foreground hover:text-foreground"
+          >
             <Search className="w-5 h-5" />
-          </Link>
-          
-          <Link href="/orders" className="hidden md:flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-            <User className="w-5 h-5" />
-            Orders
           </Link>
 
           <Link href="/cart">
-            <Button variant="ghost" className="relative p-2 h-auto rounded-full hover:bg-primary/5 hover:text-primary transition-colors">
+            <Button
+              variant="ghost"
+              className="relative p-2 h-auto rounded-full hover:bg-primary/5 hover:text-primary transition-colors"
+            >
               <ShoppingBag className="w-5 h-5" />
               {totals.count > 0 && (
                 <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center ring-2 ring-background">
@@ -55,6 +61,8 @@ export function AppHeader() {
               )}
             </Button>
           </Link>
+
+          <UserMenu />
         </div>
       </div>
     </header>

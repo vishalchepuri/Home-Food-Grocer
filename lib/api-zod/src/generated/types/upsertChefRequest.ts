@@ -6,8 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface Chef {
-  id: number;
+export interface UpsertChefRequest {
   name: string;
   tagline: string;
   cuisine: string;

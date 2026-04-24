@@ -46,6 +46,7 @@ export const ListChefsResponseItem = zod.object({
   location: zod.string(),
   priceForTwo: zod.number(),
   isVeg: zod.boolean(),
+  featured: zod.boolean().optional(),
 });
 export const ListChefsResponse = zod.array(ListChefsResponseItem);
 
@@ -69,6 +70,7 @@ export const GetChefResponse = zod.object({
     location: zod.string(),
     priceForTwo: zod.number(),
     isVeg: zod.boolean(),
+    featured: zod.boolean().optional(),
   }),
   dishes: zod.array(
     zod.object({
@@ -105,6 +107,7 @@ export const ListProductsResponseItem = zod.object({
   categoryId: zod.number(),
   categoryName: zod.string(),
   inStock: zod.boolean(),
+  essential: zod.boolean().optional(),
 });
 export const ListProductsResponse = zod.array(ListProductsResponseItem);
 
@@ -126,6 +129,7 @@ export const GetProductResponse = zod.object({
   categoryId: zod.number(),
   categoryName: zod.string(),
   inStock: zod.boolean(),
+  essential: zod.boolean().optional(),
 });
 
 /**
@@ -149,6 +153,7 @@ export const SearchAllResponse = zod.object({
       location: zod.string(),
       priceForTwo: zod.number(),
       isVeg: zod.boolean(),
+      featured: zod.boolean().optional(),
     }),
   ),
   dishes: zod.array(
@@ -177,6 +182,7 @@ export const SearchAllResponse = zod.object({
       categoryId: zod.number(),
       categoryName: zod.string(),
       inStock: zod.boolean(),
+      essential: zod.boolean().optional(),
     }),
   ),
 });
@@ -196,6 +202,7 @@ export const GetFeaturedChefsResponseItem = zod.object({
   location: zod.string(),
   priceForTwo: zod.number(),
   isVeg: zod.boolean(),
+  featured: zod.boolean().optional(),
 });
 export const GetFeaturedChefsResponse = zod.array(GetFeaturedChefsResponseItem);
 
@@ -230,6 +237,7 @@ export const GetGroceryEssentialsResponseItem = zod.object({
   categoryId: zod.number(),
   categoryName: zod.string(),
   inStock: zod.boolean(),
+  essential: zod.boolean().optional(),
 });
 export const GetGroceryEssentialsResponse = zod.array(
   GetGroceryEssentialsResponseItem,
@@ -248,7 +256,296 @@ export const GetOffersResponseItem = zod.object({
 export const GetOffersResponse = zod.array(GetOffersResponseItem);
 
 /**
- * @summary List recent orders for the current device
+ * @summary Get the current authenticated user (or null)
+ */
+export const GetMeResponse = zod.object({
+  id: zod.string().optional(),
+  email: zod.string().optional(),
+  firstName: zod.string().optional(),
+  lastName: zod.string().optional(),
+  imageUrl: zod.string().optional(),
+  isAdmin: zod.boolean(),
+});
+
+/**
+ * @summary Admin dashboard stats
+ */
+export const GetAdminStatsResponse = zod.object({
+  totalOrders: zod.number(),
+  totalRevenue: zod.number(),
+  totalProducts: zod.number(),
+  totalChefs: zod.number(),
+  ordersByStatus: zod.record(zod.string(), zod.number()),
+  revenueByDay: zod.array(
+    zod.object({
+      day: zod.string(),
+      revenue: zod.number(),
+      orders: zod.number(),
+    }),
+  ),
+});
+
+/**
+ * @summary List all orders (admin)
+ */
+export const AdminListOrdersQueryParams = zod.object({
+  status: zod.coerce.string().optional(),
+});
+
+export const AdminListOrdersResponseItem = zod.object({
+  id: zod.number(),
+  deviceId: zod.string(),
+  items: zod.array(
+    zod.object({
+      kind: zod.enum(["dish", "product"]),
+      refId: zod.number(),
+      name: zod.string(),
+      imageUrl: zod.string(),
+      unitPrice: zod.number(),
+      quantity: zod.number(),
+    }),
+  ),
+  address: zod.object({
+    fullName: zod.string(),
+    phone: zod.string(),
+    line1: zod.string(),
+    line2: zod.string().optional(),
+    city: zod.string(),
+    pincode: zod.string(),
+    landmark: zod.string().optional(),
+  }),
+  paymentMethod: zod.enum(["cod", "online"]),
+  paymentStatus: zod.enum(["pending", "paid", "failed"]),
+  paymentReference: zod.string().optional(),
+  status: zod.enum([
+    "placed",
+    "preparing",
+    "out_for_delivery",
+    "delivered",
+    "cancelled",
+  ]),
+  subtotal: zod.number(),
+  deliveryFee: zod.number(),
+  tip: zod.number(),
+  total: zod.number(),
+  notes: zod.string().optional(),
+  createdAt: zod.coerce.date(),
+});
+export const AdminListOrdersResponse = zod.array(AdminListOrdersResponseItem);
+
+/**
+ * @summary Update an order's status
+ */
+export const AdminUpdateOrderStatusParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const AdminUpdateOrderStatusBody = zod.object({
+  status: zod.enum([
+    "placed",
+    "preparing",
+    "out_for_delivery",
+    "delivered",
+    "cancelled",
+  ]),
+});
+
+export const AdminUpdateOrderStatusResponse = zod.object({
+  id: zod.number(),
+  deviceId: zod.string(),
+  items: zod.array(
+    zod.object({
+      kind: zod.enum(["dish", "product"]),
+      refId: zod.number(),
+      name: zod.string(),
+      imageUrl: zod.string(),
+      unitPrice: zod.number(),
+      quantity: zod.number(),
+    }),
+  ),
+  address: zod.object({
+    fullName: zod.string(),
+    phone: zod.string(),
+    line1: zod.string(),
+    line2: zod.string().optional(),
+    city: zod.string(),
+    pincode: zod.string(),
+    landmark: zod.string().optional(),
+  }),
+  paymentMethod: zod.enum(["cod", "online"]),
+  paymentStatus: zod.enum(["pending", "paid", "failed"]),
+  paymentReference: zod.string().optional(),
+  status: zod.enum([
+    "placed",
+    "preparing",
+    "out_for_delivery",
+    "delivered",
+    "cancelled",
+  ]),
+  subtotal: zod.number(),
+  deliveryFee: zod.number(),
+  tip: zod.number(),
+  total: zod.number(),
+  notes: zod.string().optional(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Admin list chefs
+ */
+export const AdminListChefsResponseItem = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  tagline: zod.string(),
+  cuisine: zod.string(),
+  rating: zod.number(),
+  etaMinutes: zod.number(),
+  deliveryFee: zod.number(),
+  imageUrl: zod.string(),
+  location: zod.string(),
+  priceForTwo: zod.number(),
+  isVeg: zod.boolean(),
+  featured: zod.boolean().optional(),
+});
+export const AdminListChefsResponse = zod.array(AdminListChefsResponseItem);
+
+/**
+ * @summary Create a chef
+ */
+export const AdminCreateChefBody = zod.object({
+  name: zod.string(),
+  tagline: zod.string(),
+  cuisine: zod.string(),
+  rating: zod.number(),
+  etaMinutes: zod.number(),
+  deliveryFee: zod.number(),
+  imageUrl: zod.string(),
+  location: zod.string(),
+  priceForTwo: zod.number(),
+  isVeg: zod.boolean(),
+  featured: zod.boolean().optional(),
+});
+
+/**
+ * @summary Update a chef
+ */
+export const AdminUpdateChefParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const AdminUpdateChefBody = zod.object({
+  name: zod.string(),
+  tagline: zod.string(),
+  cuisine: zod.string(),
+  rating: zod.number(),
+  etaMinutes: zod.number(),
+  deliveryFee: zod.number(),
+  imageUrl: zod.string(),
+  location: zod.string(),
+  priceForTwo: zod.number(),
+  isVeg: zod.boolean(),
+  featured: zod.boolean().optional(),
+});
+
+export const AdminUpdateChefResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  tagline: zod.string(),
+  cuisine: zod.string(),
+  rating: zod.number(),
+  etaMinutes: zod.number(),
+  deliveryFee: zod.number(),
+  imageUrl: zod.string(),
+  location: zod.string(),
+  priceForTwo: zod.number(),
+  isVeg: zod.boolean(),
+  featured: zod.boolean().optional(),
+});
+
+/**
+ * @summary Delete a chef
+ */
+export const AdminDeleteChefParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary Admin list products
+ */
+export const AdminListProductsResponseItem = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  description: zod.string(),
+  price: zod.number(),
+  mrp: zod.number(),
+  unit: zod.string(),
+  imageUrl: zod.string(),
+  categoryId: zod.number(),
+  categoryName: zod.string(),
+  inStock: zod.boolean(),
+  essential: zod.boolean().optional(),
+});
+export const AdminListProductsResponse = zod.array(
+  AdminListProductsResponseItem,
+);
+
+/**
+ * @summary Create a product
+ */
+export const AdminCreateProductBody = zod.object({
+  name: zod.string(),
+  description: zod.string(),
+  price: zod.number(),
+  mrp: zod.number(),
+  unit: zod.string(),
+  imageUrl: zod.string(),
+  categoryId: zod.number(),
+  inStock: zod.boolean().optional(),
+  essential: zod.boolean().optional(),
+});
+
+/**
+ * @summary Update a product
+ */
+export const AdminUpdateProductParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const AdminUpdateProductBody = zod.object({
+  name: zod.string(),
+  description: zod.string(),
+  price: zod.number(),
+  mrp: zod.number(),
+  unit: zod.string(),
+  imageUrl: zod.string(),
+  categoryId: zod.number(),
+  inStock: zod.boolean().optional(),
+  essential: zod.boolean().optional(),
+});
+
+export const AdminUpdateProductResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  description: zod.string(),
+  price: zod.number(),
+  mrp: zod.number(),
+  unit: zod.string(),
+  imageUrl: zod.string(),
+  categoryId: zod.number(),
+  categoryName: zod.string(),
+  inStock: zod.boolean(),
+  essential: zod.boolean().optional(),
+});
+
+/**
+ * @summary Delete a product
+ */
+export const AdminDeleteProductParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary List recent orders for the current device or signed-in user
  */
 export const ListOrdersQueryParams = zod.object({
   deviceId: zod.coerce.string(),

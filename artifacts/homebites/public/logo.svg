@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 56" width="200" height="56">
+  <rect x="2" y="8" width="40" height="40" rx="10" fill="#ff5a1f"/>
+  <text x="22" y="38" text-anchor="middle" font-family="'Outfit', system-ui, sans-serif" font-weight="800" font-size="26" fill="white">H</text>
+  <text x="52" y="38" font-family="'Outfit', system-ui, sans-serif" font-weight="800" font-size="26" fill="#1c130d">HomeBites</text>
+</svg>

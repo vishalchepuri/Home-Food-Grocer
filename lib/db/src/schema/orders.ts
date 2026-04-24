@@ -10,6 +10,7 @@ import {
 export const ordersTable = pgTable("orders", {
   id: serial("id").primaryKey(),
   deviceId: text("device_id").notNull(),
+  userId: text("user_id"),
   items: jsonb("items").notNull(),
   address: jsonb("address").notNull(),
   paymentMethod: text("payment_method").notNull(),

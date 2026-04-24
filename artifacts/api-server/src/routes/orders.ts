@@ -1,13 +1,15 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Response } from "express";
 import { db, ordersTable } from "@workspace/db";
 import {
   CreateOrderBody,
   ListOrdersQueryParams,
   GetOrderParams,
 } from "@workspace/api-zod";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, or } from "drizzle-orm";
+import { loadUser, type AuthedRequest } from "../middlewares/auth";
 
 const router: IRouter = Router();
+router.use(loadUser);
 
 function serializeOrder(row: typeof ordersTable.$inferSelect) {
   return {
@@ -33,17 +35,24 @@ function serializeOrder(row: typeof ordersTable.$inferSelect) {
   };
 }
 
-router.get("/orders", async (req, res) => {
+router.get("/orders", async (req: AuthedRequest, res: Response) => {
   const params = ListOrdersQueryParams.parse(req.query);
   const rows = await db
     .select()
     .from(ordersTable)
-    .where(eq(ordersTable.deviceId, params.deviceId))
+    .where(
+      req.userId
+        ? or(
+            eq(ordersTable.userId, req.userId),
+            eq(ordersTable.deviceId, params.deviceId),
+          )
+        : eq(ordersTable.deviceId, params.deviceId),
+    )
     .orderBy(desc(ordersTable.createdAt));
   res.json(rows.map(serializeOrder));
 });
 
-router.post("/orders", async (req, res) => {
+router.post("/orders", async (req: AuthedRequest, res: Response) => {
   const body = CreateOrderBody.parse(req.body);
   const subtotal = body.items.reduce(
     (sum, it) => sum + it.unitPrice * it.quantity,
@@ -59,6 +68,7 @@ router.post("/orders", async (req, res) => {
     .insert(ordersTable)
     .values({
       deviceId: body.deviceId,
+      userId: req.userId ?? null,
       items: body.items,
       address: body.address,
       paymentMethod: body.paymentMethod,
