@@ -3,20 +3,22 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: HomeBites - Home food and groceries marketplace API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
-    description: Health operations
+  - name: catalog
+  - name: orders
+  - name: payments
+  - name: dashboard
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +26,293 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /categories:
+    get:
+      operationId: listCategories
+      tags: [catalog]
+      summary: List all categories (home food and grocery)
+      responses:
+        "200":
+          description: Categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Category"
+
+  /chefs:
+    get:
+      operationId: listChefs
+      tags: [catalog]
+      summary: List home chefs
+      parameters:
+        - in: query
+          name: cuisine
+          schema:
+            type: string
+        - in: query
+          name: q
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Chefs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Chef"
+
+  /chefs/{id}:
+    get:
+      operationId: getChef
+      tags: [catalog]
+      summary: Get a home chef with their menu
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Chef detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChefDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /products:
+    get:
+      operationId: listProducts
+      tags: [catalog]
+      summary: List grocery products
+      parameters:
+        - in: query
+          name: categoryId
+          schema:
+            type: integer
+        - in: query
+          name: q
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Product"
+
+  /products/{id}:
+    get:
+      operationId: getProduct
+      tags: [catalog]
+      summary: Get a grocery product
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /search:
+    get:
+      operationId: searchAll
+      tags: [catalog]
+      summary: Search across home food dishes, chefs, and groceries
+      parameters:
+        - in: query
+          name: q
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchResults"
+
+  /dashboard/featured-chefs:
+    get:
+      operationId: getFeaturedChefs
+      tags: [dashboard]
+      summary: Top-rated featured chefs for the home page
+      responses:
+        "200":
+          description: Featured chefs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Chef"
+
+  /dashboard/popular-dishes:
+    get:
+      operationId: getPopularDishes
+      tags: [dashboard]
+      summary: Popular home-cooked dishes across chefs
+      responses:
+        "200":
+          description: Popular dishes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Dish"
+
+  /dashboard/grocery-essentials:
+    get:
+      operationId: getGroceryEssentials
+      tags: [dashboard]
+      summary: Daily grocery essentials shortlist
+      responses:
+        "200":
+          description: Grocery essentials
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Product"
+
+  /dashboard/offers:
+    get:
+      operationId: getOffers
+      tags: [dashboard]
+      summary: Current promotional offers
+      responses:
+        "200":
+          description: Offers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Offer"
+
+  /orders:
+    get:
+      operationId: listOrders
+      tags: [orders]
+      summary: List recent orders for the current device
+      parameters:
+        - in: query
+          name: deviceId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Order"
+    post:
+      operationId: createOrder
+      tags: [orders]
+      summary: Place an order with COD or online payment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrderRequest"
+      responses:
+        "201":
+          description: Order placed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /orders/{id}:
+    get:
+      operationId: getOrder
+      tags: [orders]
+      summary: Get an order by id
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /payments/process:
+    post:
+      operationId: processPayment
+      tags: [payments]
+      summary: Process a simulated online card payment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProcessPaymentRequest"
+      responses:
+        "200":
+          description: Payment result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentResult"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
 components:
   schemas:
     HealthStatus:
@@ -31,6 +320,315 @@ components:
       properties:
         status:
           type: string
-      required:
-        - status
+      required: [status]
 
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+      required: [message]
+
+    Category:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        slug:
+          type: string
+        kind:
+          type: string
+          enum: [home_food, grocery]
+        imageUrl:
+          type: string
+      required: [id, name, slug, kind, imageUrl]
+
+    Chef:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        tagline:
+          type: string
+        cuisine:
+          type: string
+        rating:
+          type: number
+        etaMinutes:
+          type: integer
+        deliveryFee:
+          type: number
+        imageUrl:
+          type: string
+        location:
+          type: string
+        priceForTwo:
+          type: number
+        isVeg:
+          type: boolean
+      required:
+        [
+          id,
+          name,
+          tagline,
+          cuisine,
+          rating,
+          etaMinutes,
+          deliveryFee,
+          imageUrl,
+          location,
+          priceForTwo,
+          isVeg,
+        ]
+
+    Dish:
+      type: object
+      properties:
+        id:
+          type: integer
+        chefId:
+          type: integer
+        chefName:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+        imageUrl:
+          type: string
+        isVeg:
+          type: boolean
+        rating:
+          type: number
+        spiceLevel:
+          type: string
+          enum: [mild, medium, spicy]
+      required:
+        [id, chefId, chefName, name, description, price, imageUrl, isVeg, rating, spiceLevel]
+
+    ChefDetail:
+      type: object
+      properties:
+        chef:
+          $ref: "#/components/schemas/Chef"
+        dishes:
+          type: array
+          items:
+            $ref: "#/components/schemas/Dish"
+      required: [chef, dishes]
+
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+        mrp:
+          type: number
+        unit:
+          type: string
+        imageUrl:
+          type: string
+        categoryId:
+          type: integer
+        categoryName:
+          type: string
+        inStock:
+          type: boolean
+      required:
+        [
+          id,
+          name,
+          description,
+          price,
+          mrp,
+          unit,
+          imageUrl,
+          categoryId,
+          categoryName,
+          inStock,
+        ]
+
+    Offer:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        subtitle:
+          type: string
+        code:
+          type: string
+        accentColor:
+          type: string
+      required: [id, title, subtitle, code, accentColor]
+
+    SearchResults:
+      type: object
+      properties:
+        chefs:
+          type: array
+          items:
+            $ref: "#/components/schemas/Chef"
+        dishes:
+          type: array
+          items:
+            $ref: "#/components/schemas/Dish"
+        products:
+          type: array
+          items:
+            $ref: "#/components/schemas/Product"
+      required: [chefs, dishes, products]
+
+    OrderItem:
+      type: object
+      properties:
+        kind:
+          type: string
+          enum: [dish, product]
+        refId:
+          type: integer
+        name:
+          type: string
+        imageUrl:
+          type: string
+        unitPrice:
+          type: number
+        quantity:
+          type: integer
+      required: [kind, refId, name, imageUrl, unitPrice, quantity]
+
+    Address:
+      type: object
+      properties:
+        fullName:
+          type: string
+        phone:
+          type: string
+        line1:
+          type: string
+        line2:
+          type: string
+        city:
+          type: string
+        pincode:
+          type: string
+        landmark:
+          type: string
+      required: [fullName, phone, line1, city, pincode]
+
+    CreateOrderRequest:
+      type: object
+      properties:
+        deviceId:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderItem"
+        address:
+          $ref: "#/components/schemas/Address"
+        paymentMethod:
+          type: string
+          enum: [cod, online]
+        paymentReference:
+          type: string
+        deliveryFee:
+          type: number
+        tip:
+          type: number
+        notes:
+          type: string
+      required: [deviceId, items, address, paymentMethod, deliveryFee]
+
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+        deviceId:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderItem"
+        address:
+          $ref: "#/components/schemas/Address"
+        paymentMethod:
+          type: string
+          enum: [cod, online]
+        paymentStatus:
+          type: string
+          enum: [pending, paid, failed]
+        paymentReference:
+          type: string
+        status:
+          type: string
+          enum: [placed, preparing, out_for_delivery, delivered, cancelled]
+        subtotal:
+          type: number
+        deliveryFee:
+          type: number
+        tip:
+          type: number
+        total:
+          type: number
+        notes:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        [
+          id,
+          deviceId,
+          items,
+          address,
+          paymentMethod,
+          paymentStatus,
+          status,
+          subtotal,
+          deliveryFee,
+          tip,
+          total,
+          createdAt,
+        ]
+
+    ProcessPaymentRequest:
+      type: object
+      properties:
+        amount:
+          type: number
+        cardNumber:
+          type: string
+          description: Simulated card number; ends with even digit = success, odd = fail
+        cardHolder:
+          type: string
+        expiry:
+          type: string
+        cvv:
+          type: string
+      required: [amount, cardNumber, cardHolder, expiry, cvv]
+
+    PaymentResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        reference:
+          type: string
+        message:
+          type: string
+      required: [success, reference, message]
