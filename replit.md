@@ -37,7 +37,10 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
 ## Artifacts
 
 - **`artifacts/api-server`** — Express 5 API server. Routes: catalog, dashboard, orders, payments, `/me`, `/me/claim-admin`, `/admin/*` (stats, orders + status, chef CRUD, product CRUD). Clerk middleware mounted before `/api`. Mock payment endpoint: even-last-digit cards succeed, odd fail.
-- **`artifacts/homebites`** (web, mounted at `/`) — Swiggy-inspired marketplace for home-cooked meals + groceries. React + Vite + wouter + TanStack Query + framer-motion + Clerk. Cart in localStorage (deviceId). Storefront pages: home, chefs/:id, groceries, products/:id, search, cart, checkout (COD or simulated card), orders, orders/:id. Auth pages: `/sign-in`, `/sign-up`. Admin portal: `/admin` (dashboard, orders, chefs, products) — gated on `me.isAdmin`.
+- **`artifacts/homebites`** (web, mounted at `/`) — Swiggy-inspired marketplace for home-cooked meals + groceries. React + Vite + wouter + TanStack Query + framer-motion + Clerk. Cart in localStorage (deviceId). Storefront pages: home, chefs/:id, groceries, products/:id, search, cart, checkout (COD or simulated card, with promo codes), orders, orders/:id (with reorder), favorites. Auth pages: `/sign-in`, `/sign-up`. Admin portal: `/admin` (dashboard, orders, chefs, products) — gated on `me.isAdmin`.
+- City picker: `LocationProvider`/`useLocationCity` (`use-location.tsx`) backs the header city dropdown with localStorage key `homebites:city` (default Hyderabad).
+- Favorites: `FavoritesProvider`/`useFavorites` (`use-favorites.tsx`) persists to `homebites:favorites`. `<FavoriteButton />` appears on chef/dish/product cards. `/favorites` page lets users re-add items to cart.
+- Promo codes: `POST /api/promos/validate` validates against the cart and returns `{valid, code, label, discount, message}`. Codes: `WELCOME50` (50% off, max ₹100), `FREESHIP` (free delivery if subtotal ≥ ₹299), `HOMECHEF75` (₹75 off if has dish AND subtotal ≥ ₹399). Checkout applies the discount; the order persists `discount` and `promoCode` columns.
 - **`artifacts/mockup-sandbox`** — design canvas, unused for HomeBites delivery.
 
 ## Database
