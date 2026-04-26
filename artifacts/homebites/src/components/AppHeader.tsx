@@ -1,8 +1,9 @@
 import { Link, useLocation } from "wouter";
-import { Search, ShoppingBag, MapPin } from "lucide-react";
+import { Search, ShoppingBag } from "lucide-react";
 import { useCart } from "@/hooks/use-cart";
 import { Button } from "@/components/ui/button";
 import { UserMenu } from "@/components/UserMenu";
+import { LocationPicker } from "@/components/LocationPicker";
 
 export function AppHeader() {
   const { totals } = useCart();
@@ -22,12 +23,7 @@ export function AppHeader() {
               HomeBites
             </span>
           </Link>
-          <div className="hidden md:flex items-center text-sm text-muted-foreground hover:text-foreground cursor-pointer gap-1 transition-colors">
-            <MapPin className="w-4 h-4 text-primary" />
-            <span className="font-medium underline decoration-primary/30 decoration-dashed underline-offset-4">
-              Bangalore
-            </span>
-          </div>
+          <LocationPicker />
         </div>
 
         <div className="flex-1 max-w-md hidden sm:block">
