@@ -1,17 +1,42 @@
-import { useListOrders, getListOrdersQueryKey } from "@workspace/api-client-react";
+import { useListOrders, getListOrdersQueryKey, type Order } from "@workspace/api-client-react";
 import { useDeviceId } from "@/hooks/use-device-id";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
-import { ChevronRight, Package, Calendar } from "lucide-react";
+import { ChevronRight, Package, Calendar, RotateCcw } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { format } from "date-fns";
+import { useCart } from "@/hooks/use-cart";
+import { useToast } from "@/hooks/use-toast";
 
 export default function OrdersPage() {
   const deviceId = useDeviceId();
+  const { addItem } = useCart();
+  const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const { data: orders, isLoading } = useListOrders(
     { deviceId },
     { query: { enabled: !!deviceId, queryKey: getListOrdersQueryKey({ deviceId }) } }
   );
+
+  const reorder = (e: React.MouseEvent, order: Order) => {
+    e.preventDefault();
+    e.stopPropagation();
+    for (const item of order.items) {
+      addItem({
+        kind: item.kind,
+        refId: item.refId,
+        name: item.name,
+        imageUrl: item.imageUrl,
+        unitPrice: item.unitPrice,
+        quantity: item.quantity,
+      });
+    }
+    toast({
+      title: "Items added to cart",
+      description: `${order.items.length} item${order.items.length === 1 ? "" : "s"} from order #${order.id}`,
+    });
+    setLocation("/cart");
+  };
 
   return (
     <div className="container mx-auto px-4 py-8 pb-24 max-w-3xl">
@@ -62,10 +87,20 @@ export default function OrdersPage() {
                   )}
                 </div>
 
-                <div className="flex justify-between items-center pt-4 border-t border-border/50">
+                <div className="flex justify-between items-center pt-4 border-t border-border/50 gap-3">
                   <div className="font-bold">₹{order.total}</div>
-                  <div className="flex items-center text-sm font-medium text-primary group-hover:underline">
-                    View Details <ChevronRight className="w-4 h-4 ml-1" />
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={(e) => reorder(e, order)}
+                      className="flex items-center gap-1.5 text-sm font-semibold text-primary px-3 py-1.5 rounded-lg hover:bg-primary/10 transition-colors"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      Reorder
+                    </button>
+                    <div className="flex items-center text-sm font-medium text-muted-foreground group-hover:text-primary group-hover:underline">
+                      View <ChevronRight className="w-4 h-4 ml-0.5" />
+                    </div>
                   </div>
                 </div>
               </div>

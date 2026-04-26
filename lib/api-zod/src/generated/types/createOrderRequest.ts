@@ -17,5 +17,7 @@ export interface CreateOrderRequest {
   paymentReference?: string;
   deliveryFee: number;
   tip?: number;
+  discount?: number;
+  promoCode?: string;
   notes?: string;
 }

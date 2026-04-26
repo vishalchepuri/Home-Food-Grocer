@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, Package, Shield, User as UserIcon } from "lucide-react";
+import { Heart, LogOut, Package, Shield, User as UserIcon } from "lucide-react";
 import { useMe } from "@/hooks/use-me";
 
 export function UserMenu() {
@@ -74,6 +74,12 @@ function SignedInMenu() {
           <DropdownMenuItem>
             <Package className="w-4 h-4 mr-2" />
             My orders
+          </DropdownMenuItem>
+        </Link>
+        <Link href="/favorites">
+          <DropdownMenuItem>
+            <Heart className="w-4 h-4 mr-2" />
+            Favorites
           </DropdownMenuItem>
         </Link>
         {me?.isAdmin ? (

@@ -23,6 +23,8 @@ export interface Order {
   subtotal: number;
   deliveryFee: number;
   tip: number;
+  discount?: number;
+  promoCode?: string;
   total: number;
   notes?: string;
   createdAt: Date;

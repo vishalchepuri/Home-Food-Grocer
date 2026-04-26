@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Star, Clock, MapPin } from "lucide-react";
 import { motion } from "framer-motion";
+import { FavoriteButton } from "@/components/FavoriteButton";
 
 interface ChefCardProps {
   chef: Chef;
@@ -26,6 +27,18 @@ export function ChefCard({ chef }: ChefCardProps) {
                 Pure Veg
               </div>
             )}
+            <div className="absolute top-2 left-2">
+              <FavoriteButton
+                size="sm"
+                item={{
+                  kind: "chef",
+                  refId: chef.id,
+                  name: chef.name,
+                  imageUrl: chef.imageUrl,
+                  subtitle: `${chef.cuisine} • ${chef.location}`,
+                }}
+              />
+            </div>
           </div>
           <CardContent className="p-4 flex-1 flex flex-col">
             <div className="flex justify-between items-start mb-1">

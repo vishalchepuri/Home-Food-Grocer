@@ -1,6 +1,12 @@
 import { useCart } from "@/hooks/use-cart";
 import { useDeviceId } from "@/hooks/use-device-id"; // I will create this export alias in the hook
-import { useCreateOrder, useProcessPayment, getListOrdersQueryKey } from "@workspace/api-client-react";
+import {
+  useCreateOrder,
+  useProcessPayment,
+  useValidatePromo,
+  getListOrdersQueryKey,
+  type PromoResult,
+} from "@workspace/api-client-react";
 import { useLocation, useSearch } from "wouter";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -12,7 +18,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
+import { Loader2, Tag, X, Check } from "lucide-react";
 
 const addressSchema = z.object({
   fullName: z.string().min(2, "Name is required"),
@@ -45,6 +51,9 @@ export default function CheckoutPage() {
 
   const [paymentMethod, setPaymentMethod] = useState<"cod" | "online">("online");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [promoInput, setPromoInput] = useState("");
+  const [appliedPromo, setAppliedPromo] = useState<PromoResult | null>(null);
+  const [promoError, setPromoError] = useState<string | null>(null);
 
   const addressForm = useForm<AddressForm>({
     resolver: zodResolver(addressSchema),
@@ -58,9 +67,48 @@ export default function CheckoutPage() {
 
   const createOrderMutation = useCreateOrder();
   const processPaymentMutation = useProcessPayment();
+  const validatePromoMutation = useValidatePromo();
 
   const deliveryFee = 29;
-  const grandTotal = totals.subtotal + deliveryFee + tip;
+  const discount = appliedPromo?.valid ? appliedPromo.discount : 0;
+  const grandTotal = Math.max(0, totals.subtotal + deliveryFee + tip - discount);
+
+  const applyPromo = async () => {
+    const code = promoInput.trim().toUpperCase();
+    if (!code) return;
+    setPromoError(null);
+    try {
+      const result = await validatePromoMutation.mutateAsync({
+        data: {
+          code,
+          items: items.map((i) => ({
+            kind: i.kind,
+            refId: i.refId,
+            name: i.name,
+            imageUrl: i.imageUrl,
+            unitPrice: i.unitPrice,
+            quantity: i.quantity,
+          })),
+          deliveryFee,
+        },
+      });
+      if (result.valid) {
+        setAppliedPromo(result);
+        setPromoInput("");
+        toast({ title: result.message });
+      } else {
+        setAppliedPromo(null);
+        setPromoError(result.message);
+      }
+    } catch (err: any) {
+      setPromoError(err.message || "Couldn't apply that code");
+    }
+  };
+
+  const removePromo = () => {
+    setAppliedPromo(null);
+    setPromoError(null);
+  };
 
   if (items.length === 0) {
     setLocation("/");
@@ -112,7 +160,8 @@ export default function CheckoutPage() {
           paymentMethod,
           paymentReference: paymentRef,
           deliveryFee,
-          tip
+          tip,
+          promoCode: appliedPromo?.valid ? appliedPromo.code : undefined,
         }
       });
 
@@ -239,6 +288,79 @@ export default function CheckoutPage() {
               ))}
             </div>
 
+            {/* Promo code */}
+            <div className="border-t border-border pt-4 mb-4">
+              {appliedPromo?.valid ? (
+                <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl p-3">
+                  <div className="flex items-start gap-2 min-w-0">
+                    <div className="w-7 h-7 bg-green-600 text-white rounded-full flex items-center justify-center shrink-0">
+                      <Check className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-semibold text-sm text-green-900 truncate">
+                        {appliedPromo.code} applied
+                      </div>
+                      <div className="text-xs text-green-700">
+                        You're saving ₹{appliedPromo.discount}
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={removePromo}
+                    className="text-green-700 hover:text-green-900 p-1 shrink-0"
+                    aria-label="Remove promo"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Tag className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        value={promoInput}
+                        onChange={(e) => {
+                          setPromoInput(e.target.value.toUpperCase());
+                          setPromoError(null);
+                        }}
+                        placeholder="Promo code"
+                        className="pl-9 h-10 uppercase"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            applyPromo();
+                          }
+                        }}
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={applyPromo}
+                      disabled={!promoInput.trim() || validatePromoMutation.isPending}
+                      className="h-10"
+                    >
+                      {validatePromoMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        "Apply"
+                      )}
+                    </Button>
+                  </div>
+                  {promoError && (
+                    <p className="text-xs text-destructive mt-1.5">{promoError}</p>
+                  )}
+                  <p className="text-[11px] text-muted-foreground mt-1.5">
+                    Try <span className="font-semibold">WELCOME50</span>,{" "}
+                    <span className="font-semibold">FREESHIP</span> or{" "}
+                    <span className="font-semibold">HOMECHEF75</span>
+                  </p>
+                </div>
+              )}
+            </div>
+
             <div className="space-y-2 text-sm border-t border-border pt-4 mb-4">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Item Total</span>
@@ -252,6 +374,12 @@ export default function CheckoutPage() {
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Delivery Partner Tip</span>
                   <span>₹{tip}</span>
+                </div>
+              )}
+              {discount > 0 && (
+                <div className="flex justify-between text-green-700 font-medium">
+                  <span>Promo discount</span>
+                  <span>−₹{discount}</span>
                 </div>
               )}
             </div>

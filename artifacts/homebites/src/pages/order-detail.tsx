@@ -1,14 +1,28 @@
 import { useGetOrder, getGetOrderQueryKey } from "@workspace/api-client-react";
-import { useParams } from "wouter";
+import { useParams, useLocation } from "wouter";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
-import { CheckCircle2, MapPin, CreditCard, Clock, Receipt } from "lucide-react";
+import {
+  CheckCircle2,
+  MapPin,
+  CreditCard,
+  Clock,
+  Receipt,
+  RotateCcw,
+  Tag,
+} from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useCart } from "@/hooks/use-cart";
+import { useToast } from "@/hooks/use-toast";
 
 export default function OrderDetailPage() {
   const { id } = useParams<{ id: string }>();
   const orderId = parseInt(id || "0", 10);
+  const { addItem } = useCart();
+  const { toast } = useToast();
+  const [, setLocation] = useLocation();
 
   const { data: order, isLoading, error } = useGetOrder(orderId, {
     query: { enabled: !!orderId, queryKey: getGetOrderQueryKey(orderId) }
@@ -29,6 +43,24 @@ export default function OrderDetailPage() {
 
   // If newly placed
   const isNew = order.status === "placed" && (new Date().getTime() - new Date(order.createdAt).getTime() < 5 * 60 * 1000);
+
+  const handleReorder = () => {
+    for (const item of order.items) {
+      addItem({
+        kind: item.kind,
+        refId: item.refId,
+        name: item.name,
+        imageUrl: item.imageUrl,
+        unitPrice: item.unitPrice,
+        quantity: item.quantity,
+      });
+    }
+    toast({
+      title: "Items added to cart",
+      description: `${order.items.length} item${order.items.length === 1 ? "" : "s"} from order #${order.id}`,
+    });
+    setLocation("/cart");
+  };
 
   return (
     <div className="container mx-auto px-4 py-8 pb-24 max-w-2xl">
@@ -119,11 +151,29 @@ export default function OrderDetailPage() {
                 <span>₹{order.tip}</span>
               </div>
             )}
+            {order.discount && order.discount > 0 ? (
+              <div className="flex justify-between text-green-700">
+                <span className="flex items-center gap-1.5">
+                  <Tag className="w-3.5 h-3.5" />
+                  Promo {order.promoCode ? `(${order.promoCode})` : ""}
+                </span>
+                <span>−₹{order.discount}</span>
+              </div>
+            ) : null}
             <div className="flex justify-between items-center pt-3 border-t border-border font-bold text-lg">
               <span>Total</span>
               <span>₹{order.total}</span>
             </div>
           </div>
+
+          <Button
+            onClick={handleReorder}
+            variant="outline"
+            className="w-full mt-6 h-11 rounded-xl border-primary/30 text-primary hover:bg-primary/5 hover:text-primary"
+          >
+            <RotateCcw className="w-4 h-4 mr-2" />
+            Reorder these items
+          </Button>
         </div>
       </div>
     </div>

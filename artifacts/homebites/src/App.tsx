@@ -13,6 +13,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { CartProvider } from "@/hooks/use-cart";
 import { LocationProvider } from "@/hooks/use-location";
+import { FavoritesProvider } from "@/hooks/use-favorites";
 
 import { AppHeader } from "@/components/AppHeader";
 import { AppFooter } from "@/components/AppFooter";
@@ -29,6 +30,7 @@ import CartPage from "@/pages/cart";
 import CheckoutPage from "@/pages/checkout";
 import OrdersPage from "@/pages/orders";
 import OrderDetailPage from "@/pages/order-detail";
+import FavoritesPage from "@/pages/favorites";
 import NotFound from "@/pages/not-found";
 import AdminDashboard from "@/pages/admin/dashboard";
 import AdminOrders from "@/pages/admin/orders";
@@ -180,6 +182,7 @@ function StorefrontSwitch() {
         <Route path="/checkout" component={CheckoutPage} />
         <Route path="/orders" component={OrdersPage} />
         <Route path="/orders/:id" component={OrderDetailPage} />
+        <Route path="/favorites" component={FavoritesPage} />
         <Route component={NotFound} />
       </Switch>
     </StorefrontLayout>
@@ -239,9 +242,11 @@ function ClerkProviderWithRoutes() {
         <ClerkQueryClientCacheInvalidator />
         <TooltipProvider>
           <LocationProvider>
-            <CartProvider>
-              <AppRoutes />
-            </CartProvider>
+            <FavoritesProvider>
+              <CartProvider>
+                <AppRoutes />
+              </CartProvider>
+            </FavoritesProvider>
           </LocationProvider>
           <Toaster />
         </TooltipProvider>

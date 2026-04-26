@@ -7,6 +7,7 @@ import {
 } from "@workspace/api-zod";
 import { eq, desc, or } from "drizzle-orm";
 import { loadUser, type AuthedRequest } from "../middlewares/auth";
+import { calculatePromoDiscount } from "./promos";
 
 const router: IRouter = Router();
 router.use(loadUser);
@@ -29,6 +30,8 @@ function serializeOrder(row: typeof ordersTable.$inferSelect) {
     subtotal: Number(row.subtotal),
     deliveryFee: Number(row.deliveryFee),
     tip: Number(row.tip),
+    discount: Number(row.discount),
+    promoCode: row.promoCode ?? undefined,
     total: Number(row.total),
     notes: row.notes ?? undefined,
     createdAt: row.createdAt.toISOString(),
@@ -59,7 +62,12 @@ router.post("/orders", async (req: AuthedRequest, res: Response) => {
     0,
   );
   const tip = body.tip ?? 0;
-  const total = subtotal + body.deliveryFee + tip;
+  const { discount, appliedCode } = calculatePromoDiscount(
+    body.promoCode,
+    body.items,
+    body.deliveryFee,
+  );
+  const total = Math.max(0, subtotal + body.deliveryFee + tip - discount);
 
   const isOnline = body.paymentMethod === "online";
   const paymentStatus = isOnline ? "paid" : "pending";
@@ -78,6 +86,8 @@ router.post("/orders", async (req: AuthedRequest, res: Response) => {
       subtotal: subtotal.toFixed(2),
       deliveryFee: body.deliveryFee.toFixed(2),
       tip: tip.toFixed(2),
+      discount: discount.toFixed(2),
+      promoCode: appliedCode,
       total: total.toFixed(2),
       notes: body.notes ?? null,
     })

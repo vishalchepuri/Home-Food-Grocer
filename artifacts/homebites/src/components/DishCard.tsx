@@ -4,6 +4,7 @@ import { QuantityStepper } from "./QuantityStepper";
 import { Star, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { FavoriteButton } from "@/components/FavoriteButton";
 
 interface DishCardProps {
   dish: Dish;
@@ -73,6 +74,19 @@ export function DishCard({ dish, showChefName = false }: DishCardProps) {
             className="w-full h-full object-cover bg-muted"
             loading="lazy"
           />
+          <div className="absolute top-1.5 right-1.5">
+            <FavoriteButton
+              size="sm"
+              item={{
+                kind: "dish",
+                refId: dish.id,
+                name: dish.name,
+                imageUrl: dish.imageUrl,
+                subtitle: dish.chefName,
+                price: dish.price,
+              }}
+            />
+          </div>
         </div>
         <div className="w-[100px] relative z-10 shadow-sm rounded-md bg-background">
           <QuantityStepper

@@ -35,11 +35,13 @@ import type {
   PaymentResult,
   ProcessPaymentRequest,
   Product,
+  PromoResult,
   SearchAllParams,
   SearchResults,
   UpdateOrderStatusRequest,
   UpsertChefRequest,
   UpsertProductRequest,
+  ValidatePromoRequest,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -2185,6 +2187,92 @@ export function useGetOrder<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Validate a promo code against the current cart
+ */
+export const getValidatePromoUrl = () => {
+  return `/api/promos/validate`;
+};
+
+export const validatePromo = async (
+  validatePromoRequest: ValidatePromoRequest,
+  options?: RequestInit,
+): Promise<PromoResult> => {
+  return customFetch<PromoResult>(getValidatePromoUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(validatePromoRequest),
+  });
+};
+
+export const getValidatePromoMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof validatePromo>>,
+    TError,
+    { data: BodyType<ValidatePromoRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof validatePromo>>,
+  TError,
+  { data: BodyType<ValidatePromoRequest> },
+  TContext
+> => {
+  const mutationKey = ["validatePromo"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof validatePromo>>,
+    { data: BodyType<ValidatePromoRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return validatePromo(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ValidatePromoMutationResult = NonNullable<
+  Awaited<ReturnType<typeof validatePromo>>
+>;
+export type ValidatePromoMutationBody = BodyType<ValidatePromoRequest>;
+export type ValidatePromoMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Validate a promo code against the current cart
+ */
+export const useValidatePromo = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof validatePromo>>,
+    TError,
+    { data: BodyType<ValidatePromoRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof validatePromo>>,
+  TError,
+  { data: BodyType<ValidatePromoRequest> },
+  TContext
+> => {
+  return useMutation(getValidatePromoMutationOptions(options));
+};
 
 /**
  * @summary Process a simulated online card payment

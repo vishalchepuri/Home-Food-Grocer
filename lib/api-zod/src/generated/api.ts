@@ -327,6 +327,8 @@ export const AdminListOrdersResponseItem = zod.object({
   subtotal: zod.number(),
   deliveryFee: zod.number(),
   tip: zod.number(),
+  discount: zod.number().optional(),
+  promoCode: zod.string().optional(),
   total: zod.number(),
   notes: zod.string().optional(),
   createdAt: zod.coerce.date(),
@@ -385,6 +387,8 @@ export const AdminUpdateOrderStatusResponse = zod.object({
   subtotal: zod.number(),
   deliveryFee: zod.number(),
   tip: zod.number(),
+  discount: zod.number().optional(),
+  promoCode: zod.string().optional(),
   total: zod.number(),
   notes: zod.string().optional(),
   createdAt: zod.coerce.date(),
@@ -586,6 +590,8 @@ export const ListOrdersResponseItem = zod.object({
   subtotal: zod.number(),
   deliveryFee: zod.number(),
   tip: zod.number(),
+  discount: zod.number().optional(),
+  promoCode: zod.string().optional(),
   total: zod.number(),
   notes: zod.string().optional(),
   createdAt: zod.coerce.date(),
@@ -620,6 +626,8 @@ export const CreateOrderBody = zod.object({
   paymentReference: zod.string().optional(),
   deliveryFee: zod.number(),
   tip: zod.number().optional(),
+  discount: zod.number().optional(),
+  promoCode: zod.string().optional(),
   notes: zod.string().optional(),
 });
 
@@ -665,9 +673,37 @@ export const GetOrderResponse = zod.object({
   subtotal: zod.number(),
   deliveryFee: zod.number(),
   tip: zod.number(),
+  discount: zod.number().optional(),
+  promoCode: zod.string().optional(),
   total: zod.number(),
   notes: zod.string().optional(),
   createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Validate a promo code against the current cart
+ */
+export const ValidatePromoBody = zod.object({
+  code: zod.string(),
+  items: zod.array(
+    zod.object({
+      kind: zod.enum(["dish", "product"]),
+      refId: zod.number(),
+      name: zod.string(),
+      imageUrl: zod.string(),
+      unitPrice: zod.number(),
+      quantity: zod.number(),
+    }),
+  ),
+  deliveryFee: zod.number(),
+});
+
+export const ValidatePromoResponse = zod.object({
+  valid: zod.boolean(),
+  code: zod.string().optional(),
+  label: zod.string().optional(),
+  discount: zod.number(),
+  message: zod.string(),
 });
 
 /**

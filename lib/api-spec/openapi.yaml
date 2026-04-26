@@ -525,6 +525,25 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  /promos/validate:
+    post:
+      operationId: validatePromo
+      tags: [orders]
+      summary: Validate a promo code against the current cart
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ValidatePromoRequest"
+      responses:
+        "200":
+          description: Promo result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PromoResult"
+
   /payments/process:
     post:
       operationId: processPayment
@@ -915,6 +934,10 @@ components:
           type: number
         tip:
           type: number
+        discount:
+          type: number
+        promoCode:
+          type: string
         notes:
           type: string
       required: [deviceId, items, address, paymentMethod, deliveryFee]
@@ -949,6 +972,10 @@ components:
           type: number
         tip:
           type: number
+        discount:
+          type: number
+        promoCode:
+          type: string
         total:
           type: number
         notes:
@@ -998,3 +1025,31 @@ components:
         message:
           type: string
       required: [success, reference, message]
+
+    ValidatePromoRequest:
+      type: object
+      properties:
+        code:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderItem"
+        deliveryFee:
+          type: number
+      required: [code, items, deliveryFee]
+
+    PromoResult:
+      type: object
+      properties:
+        valid:
+          type: boolean
+        code:
+          type: string
+        label:
+          type: string
+        discount:
+          type: number
+        message:
+          type: string
+      required: [valid, discount, message]

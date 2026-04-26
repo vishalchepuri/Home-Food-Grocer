@@ -207,6 +207,8 @@ export interface CreateOrderRequest {
   paymentReference?: string;
   deliveryFee: number;
   tip?: number;
+  discount?: number;
+  promoCode?: string;
   notes?: string;
 }
 
@@ -249,6 +251,8 @@ export interface Order {
   subtotal: number;
   deliveryFee: number;
   tip: number;
+  discount?: number;
+  promoCode?: string;
   total: number;
   notes?: string;
   createdAt: string;
@@ -266,6 +270,20 @@ export interface ProcessPaymentRequest {
 export interface PaymentResult {
   success: boolean;
   reference: string;
+  message: string;
+}
+
+export interface ValidatePromoRequest {
+  code: string;
+  items: OrderItem[];
+  deliveryFee: number;
+}
+
+export interface PromoResult {
+  valid: boolean;
+  code?: string;
+  label?: string;
+  discount: number;
   message: string;
 }
 

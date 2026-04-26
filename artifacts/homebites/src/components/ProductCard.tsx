@@ -2,6 +2,7 @@ import { Product } from "@workspace/api-client-react";
 import { useCart } from "@/hooks/use-cart";
 import { QuantityStepper } from "./QuantityStepper";
 import { Link } from "wouter";
+import { FavoriteButton } from "@/components/FavoriteButton";
 
 interface ProductCardProps {
   product: Product;
@@ -34,7 +35,7 @@ export function ProductCard({ product }: ProductCardProps) {
   const discount = Math.round(((product.mrp - product.price) / product.mrp) * 100);
 
   return (
-    <div className="flex flex-col bg-card rounded-xl border border-border/50 overflow-hidden shadow-sm h-full hover:shadow-md transition-shadow">
+    <div className="relative flex flex-col bg-card rounded-xl border border-border/50 overflow-hidden shadow-sm h-full hover:shadow-md transition-shadow">
       <Link href={`/products/${product.id}`} className="relative aspect-square p-4 bg-muted/30 cursor-pointer block">
         <img
           src={product.imageUrl}
@@ -55,6 +56,19 @@ export function ProductCard({ product }: ProductCardProps) {
           </div>
         )}
       </Link>
+      <div className="absolute top-2 right-2 z-10">
+        <FavoriteButton
+          size="sm"
+          item={{
+            kind: "product",
+            refId: product.id,
+            name: product.name,
+            imageUrl: product.imageUrl,
+            subtitle: product.unit,
+            price: product.price,
+          }}
+        />
+      </div>
       <div className="p-3 flex-1 flex flex-col">
         <div className="text-xs text-muted-foreground mb-1">{product.unit}</div>
         <Link href={`/products/${product.id}`} className="block mb-2 cursor-pointer">

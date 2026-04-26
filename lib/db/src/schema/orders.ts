@@ -20,6 +20,10 @@ export const ordersTable = pgTable("orders", {
   subtotal: numeric("subtotal", { precision: 10, scale: 2 }).notNull(),
   deliveryFee: numeric("delivery_fee", { precision: 10, scale: 2 }).notNull(),
   tip: numeric("tip", { precision: 10, scale: 2 }).notNull().default("0"),
+  discount: numeric("discount", { precision: 10, scale: 2 })
+    .notNull()
+    .default("0"),
+  promoCode: text("promo_code"),
   total: numeric("total", { precision: 10, scale: 2 }).notNull(),
   notes: text("notes"),
   createdAt: timestamp("created_at", { withTimezone: true })
