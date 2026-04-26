@@ -12,6 +12,7 @@ import { shadcn } from "@clerk/themes";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { CartProvider } from "@/hooks/use-cart";
+import { LocationProvider } from "@/hooks/use-location";
 
 import { AppHeader } from "@/components/AppHeader";
 import { AppFooter } from "@/components/AppFooter";
@@ -237,9 +238,11 @@ function ClerkProviderWithRoutes() {
       <QueryClientProvider client={queryClient}>
         <ClerkQueryClientCacheInvalidator />
         <TooltipProvider>
-          <CartProvider>
-            <AppRoutes />
-          </CartProvider>
+          <LocationProvider>
+            <CartProvider>
+              <AppRoutes />
+            </CartProvider>
+          </LocationProvider>
           <Toaster />
         </TooltipProvider>
       </QueryClientProvider>
