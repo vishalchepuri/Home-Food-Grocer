@@ -1,0 +1,26 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: homebites-api
+  annotations:
+    run.googleapis.com/ingress: all
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: "0"
+        autoscaling.knative.dev/maxScale: "2"
+    spec:
+      containerConcurrency: 80
+      timeoutSeconds: 30
+      containers:
+        - image: us-central1-docker.pkg.dev/my-app-a7f88/homebites/homebites-api
+          env:
+            - name: FIREBASE_PROJECT_ID
+              value: my-app-a7f88
+            - name: FIREBASE_STORAGE_BUCKET
+              value: my-app-a7f88.firebasestorage.app
+          resources:
+            limits:
+              cpu: "1"
+              memory: 512Mi

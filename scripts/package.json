@@ -6,10 +6,13 @@
   "scripts": {
     "hello": "tsx ./src/hello.ts",
     "seed": "tsx ./src/seed.ts",
+    "seed:firebase": "tsx ./src/seed-firebase.ts",
+    "seed:firebase:rest": "tsx ./src/seed-firebase-rest.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@workspace/db": "workspace:*"
+    "@workspace/db": "workspace:*",
+    "firebase-admin": "^13.5.0"
   },
   "devDependencies": {
     "@types/node": "catalog:",

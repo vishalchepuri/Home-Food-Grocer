@@ -5,7 +5,16 @@ import {
   ChefHat,
   ShoppingBasket,
   Loader2,
+  Clock,
+  AlertCircle,
+  BadgePercent,
+  MapPin,
+  PackageCheck,
+  Plus,
+  Settings,
+  Users,
 } from "lucide-react";
+import { Link } from "wouter";
 
 const STATUS_LABELS: Record<string, string> = {
   placed: "Placed",
@@ -71,9 +80,59 @@ export default function AdminDashboard() {
       icon: ShoppingBasket,
       tone: "bg-purple-100 text-purple-600",
     },
+    {
+      label: "Live restaurants",
+      value: String((data as any).liveRestaurants ?? 0),
+      icon: Clock,
+      tone: "bg-teal-100 text-teal-700",
+    },
+    {
+      label: "Pending orders",
+      value: String((data as any).pendingOrders ?? 0),
+      icon: AlertCircle,
+      tone: "bg-amber-100 text-amber-700",
+    },
+    {
+      label: "Average order",
+      value: formatRupees((data as any).averageOrderValue ?? 0),
+      icon: IndianRupee,
+      tone: "bg-cyan-100 text-cyan-700",
+    },
+    {
+      label: "Closed restaurants",
+      value: String((data as any).closedRestaurants ?? 0),
+      icon: ChefHat,
+      tone: "bg-slate-100 text-slate-700",
+    },
   ];
 
   const maxRevenue = Math.max(1, ...data.revenueByDay.map((d) => d.revenue));
+  const quickActions = [
+    {
+      title: "Add restaurant",
+      text: "Create a new partner with cuisine, location and delivery setup.",
+      href: "/admin/chefs",
+      icon: Plus,
+    },
+    {
+      title: "Manage products",
+      text: "Update grocery prices, stock, images and essentials.",
+      href: "/admin/products",
+      icon: PackageCheck,
+    },
+    {
+      title: "Review orders",
+      text: "Move orders through placed, preparing and delivery states.",
+      href: "/admin/orders",
+      icon: Receipt,
+    },
+    {
+      title: "Service areas",
+      text: "Check restaurant coverage, city filters and delivery readiness.",
+      href: "/admin/chefs",
+      icon: MapPin,
+    },
+  ];
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -157,6 +216,47 @@ export default function AdminDashboard() {
               <p className="text-sm text-muted-foreground">No orders yet</p>
             ) : null}
           </div>
+        </div>
+      </div>
+
+      <div className="grid lg:grid-cols-4 gap-4">
+        {quickActions.map((action) => {
+          const Icon = action.icon;
+          return (
+            <Link key={action.title} href={action.href}>
+              <div className="h-full rounded-xl border border-border bg-card p-5 shadow-sm transition-colors hover:border-primary/50 hover:bg-muted/30">
+                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <Icon className="h-5 w-5" />
+                </div>
+                <h3 className="font-display font-semibold">{action.title}</h3>
+                <p className="mt-1 text-sm text-muted-foreground">{action.text}</p>
+              </div>
+            </Link>
+          );
+        })}
+      </div>
+
+      <div className="grid md:grid-cols-3 gap-4">
+        <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+          <BadgePercent className="mb-3 h-5 w-5 text-primary" />
+          <h3 className="font-display font-semibold">Offer planning</h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Track promo performance and plan city-wise offers from this dashboard.
+          </p>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+          <Users className="mb-3 h-5 w-5 text-primary" />
+          <h3 className="font-display font-semibold">Partner quality</h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Keep ratings, prep time and open restaurants visible for daily checks.
+          </p>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+          <Settings className="mb-3 h-5 w-5 text-primary" />
+          <h3 className="font-display font-semibold">Operations health</h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Use pending orders, closed restaurants and average order value to spot issues.
+          </p>
         </div>
       </div>
     </div>

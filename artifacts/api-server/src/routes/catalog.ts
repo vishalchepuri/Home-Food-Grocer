@@ -1,23 +1,27 @@
 import { Router, type IRouter } from "express";
 import {
-  db,
-  categoriesTable,
-  chefsTable,
-  dishesTable,
-  productsTable,
-} from "@workspace/db";
-import {
   ListChefsQueryParams,
   GetChefParams,
   ListProductsQueryParams,
   GetProductParams,
   SearchAllQueryParams,
 } from "@workspace/api-zod";
-import { and, eq, ilike, or, sql } from "drizzle-orm";
+import {
+  type ChefDoc,
+  type DishDoc,
+  type ProductDoc,
+  getChefById,
+  getProductById,
+  listCategories,
+  listChefs,
+  listProducts,
+  searchAll,
+  isChefOpen,
+} from "../lib/firestoreData";
 
 const router: IRouter = Router();
 
-function chefRow(c: typeof chefsTable.$inferSelect) {
+function chefRow(c: ChefDoc) {
   return {
     id: c.id,
     name: c.name,
@@ -31,13 +35,14 @@ function chefRow(c: typeof chefsTable.$inferSelect) {
     priceForTwo: Number(c.priceForTwo),
     isVeg: c.isVeg,
     featured: c.featured,
+    opensAt: c.opensAt ?? "10:00",
+    closesAt: c.closesAt ?? "22:00",
+    isOpen: isChefOpen(c),
+    serviceAreas: c.serviceAreas ?? [c.location],
   };
 }
 
-function dishRow(
-  d: typeof dishesTable.$inferSelect,
-  chefName: string,
-) {
+function dishRow(d: DishDoc, chefName: string) {
   return {
     id: d.id,
     chefId: d.chefId,
@@ -52,10 +57,7 @@ function dishRow(
   };
 }
 
-function productRow(
-  p: typeof productsTable.$inferSelect,
-  categoryName: string,
-) {
+function productRow(p: ProductDoc, categoryName: string) {
   return {
     id: p.id,
     name: p.name,
@@ -72,7 +74,8 @@ function productRow(
 }
 
 router.get("/categories", async (_req, res) => {
-  const rows = await db.select().from(categoriesTable);
+  const rows = await listCategories();
+  res.set("Cache-Control", "private, max-age=300");
   res.json(
     rows.map((r) => ({
       id: r.id,
@@ -86,80 +89,42 @@ router.get("/categories", async (_req, res) => {
 
 router.get("/chefs", async (req, res) => {
   const params = ListChefsQueryParams.parse(req.query);
-  const conditions = [];
-  if (params.cuisine) {
-    conditions.push(ilike(chefsTable.cuisine, `%${params.cuisine}%`));
-  }
-  if (params.q) {
-    conditions.push(
-      or(
-        ilike(chefsTable.name, `%${params.q}%`),
-        ilike(chefsTable.tagline, `%${params.q}%`),
-        ilike(chefsTable.cuisine, `%${params.q}%`),
-      ),
-    );
-  }
-  const where = conditions.length ? and(...conditions) : undefined;
-  const rows = await db.select().from(chefsTable).where(where);
+  const rows = await listChefs({
+    cuisine: params.cuisine,
+    q: params.q,
+    city: typeof req.query.city === "string" ? req.query.city : undefined,
+  });
+  res.set("Cache-Control", "private, max-age=60");
   res.json(rows.map(chefRow));
 });
 
 router.get("/chefs/:id", async (req, res) => {
   const { id } = GetChefParams.parse({ id: Number(req.params.id) });
-  const [chef] = await db
-    .select()
-    .from(chefsTable)
-    .where(eq(chefsTable.id, id));
-  if (!chef) {
+  const row = await getChefById(id);
+  if (!row) {
     res.status(404).json({ message: "Chef not found" });
     return;
   }
-  const dishes = await db
-    .select()
-    .from(dishesTable)
-    .where(eq(dishesTable.chefId, id));
   res.json({
-    chef: chefRow(chef),
-    dishes: dishes.map((d) => dishRow(d, chef.name)),
+    chef: chefRow(row.chef),
+    dishes: row.dishes.map((d) => dishRow(d, row.chef.name)),
   });
 });
 
 router.get("/products", async (req, res) => {
   const params = ListProductsQueryParams.parse(req.query);
-  const conditions = [];
-  if (params.categoryId !== undefined) {
-    conditions.push(eq(productsTable.categoryId, Number(params.categoryId)));
-  }
-  if (params.q) {
-    conditions.push(
-      or(
-        ilike(productsTable.name, `%${params.q}%`),
-        ilike(productsTable.description, `%${params.q}%`),
-      ),
-    );
-  }
-  const where = conditions.length ? and(...conditions) : undefined;
-  const rows = await db
-    .select({
-      product: productsTable,
-      categoryName: categoriesTable.name,
-    })
-    .from(productsTable)
-    .innerJoin(categoriesTable, eq(productsTable.categoryId, categoriesTable.id))
-    .where(where);
+  const rows = await listProducts({
+    categoryId:
+      params.categoryId !== undefined ? Number(params.categoryId) : undefined,
+    q: params.q,
+  });
+  res.set("Cache-Control", "private, max-age=60");
   res.json(rows.map((r) => productRow(r.product, r.categoryName)));
 });
 
 router.get("/products/:id", async (req, res) => {
   const { id } = GetProductParams.parse({ id: Number(req.params.id) });
-  const [row] = await db
-    .select({
-      product: productsTable,
-      categoryName: categoriesTable.name,
-    })
-    .from(productsTable)
-    .innerJoin(categoriesTable, eq(productsTable.categoryId, categoriesTable.id))
-    .where(eq(productsTable.id, id));
+  const row = await getProductById(id);
   if (!row) {
     res.status(404).json({ message: "Product not found" });
     return;
@@ -169,48 +134,13 @@ router.get("/products/:id", async (req, res) => {
 
 router.get("/search", async (req, res) => {
   const { q } = SearchAllQueryParams.parse(req.query);
-  const term = `%${q}%`;
-
-  const chefs = await db
-    .select()
-    .from(chefsTable)
-    .where(
-      or(
-        ilike(chefsTable.name, term),
-        ilike(chefsTable.cuisine, term),
-        ilike(chefsTable.tagline, term),
-      ),
-    );
-
-  const dishesRaw = await db
-    .select({ dish: dishesTable, chefName: chefsTable.name })
-    .from(dishesTable)
-    .innerJoin(chefsTable, eq(dishesTable.chefId, chefsTable.id))
-    .where(
-      or(
-        ilike(dishesTable.name, term),
-        ilike(dishesTable.description, term),
-      ),
-    );
-
-  const products = await db
-    .select({
-      product: productsTable,
-      categoryName: categoriesTable.name,
-    })
-    .from(productsTable)
-    .innerJoin(categoriesTable, eq(productsTable.categoryId, categoriesTable.id))
-    .where(
-      or(
-        ilike(productsTable.name, term),
-        ilike(productsTable.description, term),
-      ),
-    );
+  const rows = await searchAll(q);
+  res.set("Cache-Control", "private, max-age=60");
 
   res.json({
-    chefs: chefs.map(chefRow),
-    dishes: dishesRaw.map((r) => dishRow(r.dish, r.chefName)),
-    products: products.map((r) => productRow(r.product, r.categoryName)),
+    chefs: rows.chefsFound.map(chefRow),
+    dishes: rows.dishesFound.map((r) => dishRow(r.dish, r.chefName)),
+    products: rows.productsFound.map((r) => productRow(r.product, r.categoryName)),
   });
 });
 

@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { uploadImage } from "@/lib/storage";
 import {
   Select,
   SelectContent,
@@ -53,6 +54,9 @@ import {
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 
+type LocationProduct = Product & { location?: string };
+type LocationProductForm = UpsertProductRequest & { location: string };
+
 const EMPTY: UpsertProductRequest = {
   name: "",
   description: "",
@@ -69,10 +73,36 @@ export default function AdminProducts() {
   const { data: products, isLoading } = useAdminListProducts();
   const { data: categories } = useListCategories();
   const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState<Product | null>(null);
+  const [editing, setEditing] = useState<LocationProduct | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState("all");
+  const [newLocation, setNewLocation] = useState("");
+  const [customLocations, setCustomLocations] = useState<string[]>([]);
 
   const catName = (id: number) =>
     categories?.find((c) => c.id === id)?.name ?? `#${id}`;
+  const locationProducts = (products ?? []) as LocationProduct[];
+  const locations = Array.from(
+    new Set([
+      ...locationProducts.map((product) => product.location ?? "Hyderabad"),
+      ...customLocations,
+    ]),
+  ).sort((a, b) => a.localeCompare(b));
+  const visibleProducts =
+    selectedLocation === "all"
+      ? locationProducts
+      : locationProducts.filter(
+          (product) => (product.location ?? "Hyderabad") === selectedLocation,
+        );
+
+  const addLocation = () => {
+    const trimmed = newLocation.trim();
+    if (!trimmed) return;
+    setCustomLocations((prev) =>
+      prev.includes(trimmed) ? prev : [...prev, trimmed],
+    );
+    setSelectedLocation(trimmed);
+    setNewLocation("");
+  };
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -99,6 +129,10 @@ export default function AdminProducts() {
           <ProductFormDialog
             product={editing}
             categories={categories ?? []}
+            locations={locations}
+            defaultLocation={
+              selectedLocation === "all" ? locations[0] : selectedLocation
+            }
             onClose={() => {
               setOpen(false);
               setEditing(null);
@@ -107,14 +141,53 @@ export default function AdminProducts() {
         </Dialog>
       </div>
 
+      <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
+        <div className="grid gap-4 lg:grid-cols-[260px_1fr]">
+          <div>
+            <Label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Active location
+            </Label>
+            <Select value={selectedLocation} onValueChange={setSelectedLocation}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All locations</SelectItem>
+                {locations.map((location) => (
+                  <SelectItem key={location} value={location}>
+                    {location}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Add new location
+            </Label>
+            <div className="flex gap-2">
+              <Input
+                value={newLocation}
+                onChange={(e) => setNewLocation(e.target.value)}
+                placeholder="Warangal, Hyderabad, Bangalore..."
+              />
+              <Button type="button" onClick={addLocation}>
+                <Plus className="w-4 h-4 mr-2" />
+                Add
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
         {isLoading ? (
           <div className="py-20 flex justify-center">
             <Loader2 className="w-6 h-6 animate-spin text-primary" />
           </div>
-        ) : !products || products.length === 0 ? (
+        ) : visibleProducts.length === 0 ? (
           <div className="py-20 text-center text-muted-foreground">
-            No products yet — add your first one
+            No products in this location yet. Add the first one.
           </div>
         ) : (
           <Table>
@@ -129,7 +202,7 @@ export default function AdminProducts() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {products.map((p) => (
+              {visibleProducts.map((p) => (
                 <ProductRow
                   key={p.id}
                   product={p}
@@ -153,7 +226,7 @@ function ProductRow({
   category,
   onEdit,
 }: {
-  product: Product;
+  product: LocationProduct;
   category: string;
   onEdit: () => void;
 }) {
@@ -185,7 +258,9 @@ function ProductRow({
           />
           <div>
             <div className="font-medium text-sm">{product.name}</div>
-            <div className="text-xs text-muted-foreground">{product.unit}</div>
+            <div className="text-xs text-muted-foreground">
+              {product.unit} · {product.location ?? "Hyderabad"}
+            </div>
           </div>
         </div>
       </TableCell>
@@ -258,15 +333,19 @@ function ProductRow({
 function ProductFormDialog({
   product,
   categories,
+  locations,
+  defaultLocation,
   onClose,
 }: {
-  product: Product | null;
+  product: LocationProduct | null;
   categories: { id: number; name: string }[];
+  locations: string[];
+  defaultLocation?: string;
   onClose: () => void;
 }) {
   const qc = useQueryClient();
   const { toast } = useToast();
-  const [form, setForm] = useState<UpsertProductRequest>(
+  const [form, setForm] = useState<LocationProductForm>(
     product
       ? {
           name: product.name,
@@ -278,9 +357,15 @@ function ProductFormDialog({
           categoryId: product.categoryId,
           inStock: product.inStock,
           essential: product.essential ?? false,
+          location: product.location ?? defaultLocation ?? "Hyderabad",
         }
-      : { ...EMPTY, categoryId: categories[0]?.id ?? 1 },
+      : {
+          ...EMPTY,
+          categoryId: categories[0]?.id ?? 1,
+          location: defaultLocation ?? "Hyderabad",
+        },
   );
+  const [isUploading, setIsUploading] = useState(false);
 
   const onSettled = () => {
     qc.invalidateQueries({ queryKey: getAdminListProductsQueryKey() });
@@ -317,7 +402,25 @@ function ProductFormDialog({
     },
   });
 
-  const isPending = create.isPending || update.isPending;
+  const isPending = create.isPending || update.isPending || isUploading;
+
+  const uploadProductImage = async (file: File | undefined) => {
+    if (!file) return;
+    setIsUploading(true);
+    try {
+      const imageUrl = await uploadImage(file, "products");
+      setForm((current) => ({ ...current, imageUrl }));
+      toast({ title: "Image uploaded" });
+    } catch (err) {
+      toast({
+        title: "Upload failed",
+        description: (err as Error).message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -379,6 +482,23 @@ function ProductFormDialog({
             onChange={(e) => setForm({ ...form, unit: e.target.value })}
           />
         </Field>
+        <Field label="Location">
+          <Select
+            value={form.location}
+            onValueChange={(location) => setForm({ ...form, location })}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choose location" />
+            </SelectTrigger>
+            <SelectContent>
+              {locations.map((location) => (
+                <SelectItem key={location} value={location}>
+                  {location}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
         <Field label="Category">
           <Select
             value={String(form.categoryId)}
@@ -398,10 +518,25 @@ function ProductFormDialog({
             </SelectContent>
           </Select>
         </Field>
-        <Field label="Image URL" className="col-span-2">
+        <Field label="Image" className="col-span-2">
+          {form.imageUrl ? (
+            <img
+              src={form.imageUrl}
+              alt=""
+              className="mb-3 h-32 w-full rounded-lg object-cover"
+            />
+          ) : null}
+          <Input
+            type="file"
+            accept="image/*"
+            disabled={isUploading}
+            onChange={(e) => void uploadProductImage(e.target.files?.[0])}
+          />
           <Input
             required
             type="url"
+            className="mt-2"
+            placeholder="Firebase Storage download URL"
             value={form.imageUrl}
             onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
           />

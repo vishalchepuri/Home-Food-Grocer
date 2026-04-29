@@ -61,14 +61,22 @@ export default function ChefDetailPage() {
 
       <div className="container mx-auto px-4 pt-6">
         {/* Chef Stats Bar */}
-        <div className="flex flex-wrap gap-6 p-4 bg-card border border-border/50 rounded-2xl mb-8 shadow-sm">
+          {chef.isOpen === false && (
+            <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-medium text-amber-900">
+              This restaurant is closed right now. Delivery opens at {chef.opensAt ?? "10:00"}.
+            </div>
+          )}
+
+          <div className="flex flex-wrap gap-6 p-4 bg-card border border-border/50 rounded-2xl mb-8 shadow-sm">
           <div className="flex items-center gap-2">
             <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
               <Clock className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-sm font-semibold">{chef.etaMinutes} mins</div>
-              <div className="text-xs text-muted-foreground">Delivery Time</div>
+              <div className="text-sm font-semibold">
+                {chef.opensAt ?? "10:00"}-{chef.closesAt ?? "22:00"}
+              </div>
+              <div className="text-xs text-muted-foreground">Delivery hours</div>
             </div>
           </div>
           <Separator orientation="vertical" className="hidden sm:block h-10" />

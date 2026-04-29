@@ -1,5 +1,8 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { OrderItem } from "@workspace/api-client-react";
+import { doc, onSnapshot, setDoc } from "firebase/firestore";
+import { firestore } from "@/lib/firebase";
+import { useAuth } from "@/hooks/use-auth";
 
 interface CartContextType {
   items: OrderItem[];
@@ -15,29 +18,41 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | null>(null);
 
-const CART_STORAGE_KEY = "homebites_cart";
-
 export function CartProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const [items, setItems] = useState<OrderItem[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(CART_STORAGE_KEY);
-      if (stored) {
-        setItems(JSON.parse(stored));
-      }
-    } catch (err) {
-      console.error("Failed to load cart", err);
+    if (!user) {
+      setItems([]);
+      setIsLoaded(true);
+      return;
     }
-    setIsLoaded(true);
-  }, []);
+
+    setIsLoaded(false);
+    const ref = doc(firestore, "users", user.uid, "appState", "cart");
+    return onSnapshot(
+      ref,
+      (snapshot) => {
+        const data = snapshot.data();
+        setItems(Array.isArray(data?.items) ? (data.items as OrderItem[]) : []);
+        setIsLoaded(true);
+      },
+      (err) => {
+        console.error("Failed to load cart from Firestore", err);
+        setIsLoaded(true);
+      },
+    );
+  }, [user]);
 
   useEffect(() => {
-    if (isLoaded) {
-      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
-    }
-  }, [items, isLoaded]);
+    if (!isLoaded || !user) return;
+    const ref = doc(firestore, "users", user.uid, "appState", "cart");
+    void setDoc(ref, { items, updatedAt: Date.now() }, { merge: true }).catch(
+      (err) => console.error("Failed to save cart to Firestore", err),
+    );
+  }, [items, isLoaded, user]);
 
   const addItem = (newItem: OrderItem) => {
     setItems((prev) => {

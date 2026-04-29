@@ -1,18 +1,23 @@
 import { Router, type IRouter, type Response } from "express";
-import { db, ordersTable } from "@workspace/db";
 import {
   CreateOrderBody,
   ListOrdersQueryParams,
   GetOrderParams,
 } from "@workspace/api-zod";
-import { eq, desc, or } from "drizzle-orm";
 import { loadUser, type AuthedRequest } from "../middlewares/auth";
 import { calculatePromoDiscount } from "./promos";
+import {
+  type OrderDoc,
+  createOrder,
+  findClosedRestaurantsForItems,
+  getOrderById,
+  listOrdersForUser,
+} from "../lib/firestoreData";
 
 const router: IRouter = Router();
 router.use(loadUser);
 
-function serializeOrder(row: typeof ordersTable.$inferSelect) {
+function serializeOrder(row: OrderDoc) {
   return {
     id: row.id,
     deviceId: row.deviceId,
@@ -34,29 +39,30 @@ function serializeOrder(row: typeof ordersTable.$inferSelect) {
     promoCode: row.promoCode ?? undefined,
     total: Number(row.total),
     notes: row.notes ?? undefined,
-    createdAt: row.createdAt.toISOString(),
+    createdAt: row.createdAt.toDate().toISOString(),
   };
 }
 
 router.get("/orders", async (req: AuthedRequest, res: Response) => {
   const params = ListOrdersQueryParams.parse(req.query);
-  const rows = await db
-    .select()
-    .from(ordersTable)
-    .where(
-      req.userId
-        ? or(
-            eq(ordersTable.userId, req.userId),
-            eq(ordersTable.deviceId, params.deviceId),
-          )
-        : eq(ordersTable.deviceId, params.deviceId),
-    )
-    .orderBy(desc(ordersTable.createdAt));
+  const rows = await listOrdersForUser({
+    userId: req.userId,
+    deviceId: params.deviceId,
+  });
   res.json(rows.map(serializeOrder));
 });
 
 router.post("/orders", async (req: AuthedRequest, res: Response) => {
   const body = CreateOrderBody.parse(req.body);
+  const closedRestaurants = await findClosedRestaurantsForItems(body.items);
+  if (closedRestaurants.length > 0) {
+    res.status(409).json({
+      message: `${closedRestaurants.map((r) => r.name).join(", ")} is closed for delivery right now.`,
+      closedRestaurants,
+    });
+    return;
+  }
+
   const subtotal = body.items.reduce(
     (sum, it) => sum + it.unitPrice * it.quantity,
     0,
@@ -72,36 +78,29 @@ router.post("/orders", async (req: AuthedRequest, res: Response) => {
   const isOnline = body.paymentMethod === "online";
   const paymentStatus = isOnline ? "paid" : "pending";
 
-  const [inserted] = await db
-    .insert(ordersTable)
-    .values({
-      deviceId: body.deviceId,
-      userId: req.userId ?? null,
-      items: body.items,
-      address: body.address,
-      paymentMethod: body.paymentMethod,
-      paymentStatus,
-      paymentReference: body.paymentReference ?? null,
-      status: "placed",
-      subtotal: subtotal.toFixed(2),
-      deliveryFee: body.deliveryFee.toFixed(2),
-      tip: tip.toFixed(2),
-      discount: discount.toFixed(2),
-      promoCode: appliedCode,
-      total: total.toFixed(2),
-      notes: body.notes ?? null,
-    })
-    .returning();
-
+  const inserted = await createOrder({
+    deviceId: body.deviceId,
+    userId: req.userId ?? null,
+    items: body.items,
+    address: body.address,
+    paymentMethod: body.paymentMethod,
+    paymentStatus,
+    paymentReference: body.paymentReference ?? null,
+    status: "placed",
+    subtotal: Number(subtotal.toFixed(2)),
+    deliveryFee: Number(body.deliveryFee.toFixed(2)),
+    tip: Number(tip.toFixed(2)),
+    discount: Number(discount.toFixed(2)),
+    promoCode: appliedCode,
+    total: Number(total.toFixed(2)),
+    notes: body.notes ?? null,
+  });
   res.status(201).json(serializeOrder(inserted));
 });
 
 router.get("/orders/:id", async (req, res) => {
   const { id } = GetOrderParams.parse({ id: Number(req.params.id) });
-  const [row] = await db
-    .select()
-    .from(ordersTable)
-    .where(eq(ordersTable.id, id));
+  const row = await getOrderById(id);
   if (!row) {
     res.status(404).json({ message: "Order not found" });
     return;

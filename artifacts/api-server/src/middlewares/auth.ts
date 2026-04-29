@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
-import { getAuth, clerkClient } from "@clerk/express";
+import { firebaseAuth } from "../lib/firebaseAdmin";
 
 export interface AuthedRequest extends Request {
   userId?: string;
@@ -19,22 +19,30 @@ export async function loadUser(
   _res: Response,
   next: NextFunction,
 ) {
-  const auth = getAuth(req);
-  const userId = auth?.userId;
-  if (!userId) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith("Bearer ")) {
     next();
     return;
   }
-  req.userId = userId;
+
+  const token = authHeader.slice("Bearer ".length).trim();
+  if (!token) {
+    next();
+    return;
+  }
+
   try {
-    const user = await clerkClient.users.getUser(userId);
-    const email = user.primaryEmailAddress?.emailAddress?.toLowerCase();
+    const decoded = await firebaseAuth.verifyIdToken(token);
+    const email =
+      typeof decoded.email === "string" ? decoded.email.toLowerCase() : undefined;
+    req.userId = decoded.uid;
     req.userEmail = email;
-    const role = (user.publicMetadata as { role?: string })?.role;
+
     const adminEmails = getAdminEmails();
-    req.isAdmin = role === "admin" || (!!email && adminEmails.includes(email));
-  } catch (err) {
-    // continue unauthenticated if Clerk lookup fails
+    req.isAdmin =
+      decoded.admin === true || (!!email && adminEmails.includes(email));
+  } catch {
+    // continue unauthenticated if token verification fails
   }
   next();
 }

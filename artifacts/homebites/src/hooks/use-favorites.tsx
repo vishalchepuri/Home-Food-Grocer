@@ -7,6 +7,9 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { doc, onSnapshot, setDoc } from "firebase/firestore";
+import { firestore } from "@/lib/firebase";
+import { useAuth } from "@/hooks/use-auth";
 
 export type FavoriteKind = "chef" | "dish" | "product";
 
@@ -20,8 +23,6 @@ export type FavoriteItem = {
   addedAt: number;
 };
 
-const STORAGE_KEY = "homebites:favorites";
-
 type FavoritesContextValue = {
   items: FavoriteItem[];
   isFavorite: (kind: FavoriteKind, refId: number) => boolean;
@@ -34,27 +35,40 @@ type FavoritesContextValue = {
 const FavoritesContext = createContext<FavoritesContextValue | null>(null);
 
 export function FavoritesProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const [items, setItems] = useState<FavoriteItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setItems(JSON.parse(raw) as FavoriteItem[]);
-    } catch {
-      /* ignore */
+    if (!user) {
+      setItems([]);
+      setHydrated(true);
+      return;
     }
-    setHydrated(true);
-  }, []);
+
+    setHydrated(false);
+    const ref = doc(firestore, "users", user.uid, "appState", "favorites");
+    return onSnapshot(
+      ref,
+      (snapshot) => {
+        const data = snapshot.data();
+        setItems(Array.isArray(data?.items) ? (data.items as FavoriteItem[]) : []);
+        setHydrated(true);
+      },
+      (err) => {
+        console.error("Failed to load favorites from Firestore", err);
+        setHydrated(true);
+      },
+    );
+  }, [user]);
 
   useEffect(() => {
-    if (!hydrated) return;
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-    } catch {
-      /* ignore */
-    }
-  }, [items, hydrated]);
+    if (!hydrated || !user) return;
+    const ref = doc(firestore, "users", user.uid, "appState", "favorites");
+    void setDoc(ref, { items, updatedAt: Date.now() }, { merge: true }).catch(
+      (err) => console.error("Failed to save favorites to Firestore", err),
+    );
+  }, [items, hydrated, user]);
 
   const isFavorite = useCallback(
     (kind: FavoriteKind, refId: number) =>

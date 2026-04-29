@@ -41,6 +41,10 @@ export interface Chef {
   priceForTwo: number;
   isVeg: boolean;
   featured?: boolean;
+  opensAt?: string;
+  closesAt?: string;
+  isOpen?: boolean;
+  serviceAreas?: string[];
 }
 
 export type DishSpiceLevel =
@@ -146,6 +150,10 @@ export interface AdminStats {
   totalRevenue: number;
   totalProducts: number;
   totalChefs: number;
+  liveRestaurants?: number;
+  closedRestaurants?: number;
+  averageOrderValue?: number;
+  pendingOrders?: number;
   ordersByStatus: AdminStatsOrdersByStatus;
   revenueByDay: AdminStatsRevenueByDayItem[];
 }
@@ -290,6 +298,7 @@ export interface PromoResult {
 export type ListChefsParams = {
   cuisine?: string;
   q?: string;
+  city?: string;
 };
 
 export type ListProductsParams = {

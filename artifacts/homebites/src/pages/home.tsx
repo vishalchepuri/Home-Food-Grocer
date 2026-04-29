@@ -1,8 +1,6 @@
 import { 
   useGetOffers, 
   useListCategories, 
-  useGetFeaturedChefs, 
-  useGetPopularDishes, 
   useGetGroceryEssentials 
 } from "@workspace/api-client-react";
 import { OfferCard } from "@/components/OfferCard";
@@ -14,16 +12,43 @@ import { LoadingGrid } from "@/components/LoadingGrid";
 import { Link } from "wouter";
 import { ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
+import { useLocationCity } from "@/hooks/use-location";
+import { apiPath } from "@/lib/api-path";
+import type { Chef, Dish } from "@workspace/api-client-react";
+
+function asArray<T>(value: T[] | null | undefined): T[] {
+  return Array.isArray(value) ? value : [];
+}
 
 export default function Home() {
+  const { city } = useLocationCity();
   const { data: offers, isLoading: isLoadingOffers } = useGetOffers();
   const { data: categories, isLoading: isLoadingCategories } = useListCategories();
-  const { data: featuredChefs, isLoading: isLoadingChefs } = useGetFeaturedChefs();
-  const { data: popularDishes, isLoading: isLoadingDishes } = useGetPopularDishes();
+  const { data: featuredChefs, isLoading: isLoadingChefs } = useQuery<Chef[]>({
+    queryKey: ["featured-chefs", city],
+    queryFn: () =>
+      fetch(apiPath(`/api/dashboard/featured-chefs?city=${encodeURIComponent(city)}`)).then((res) =>
+        res.json(),
+      ),
+  });
+  const { data: popularDishes, isLoading: isLoadingDishes } = useQuery<Dish[]>({
+    queryKey: ["popular-dishes", city],
+    queryFn: () =>
+      fetch(apiPath(`/api/dashboard/popular-dishes?city=${encodeURIComponent(city)}`)).then((res) =>
+        res.json(),
+      ),
+  });
   const { data: groceryEssentials, isLoading: isLoadingGroceries } = useGetGroceryEssentials();
 
-  const homeFoodCategories = categories?.filter(c => c.kind === "home_food") || [];
-  const groceryCategories = categories?.filter(c => c.kind === "grocery") || [];
+  const offersList = asArray(offers);
+  const categoriesList = asArray(categories);
+  const featuredChefsList = asArray(featuredChefs);
+  const popularDishesList = asArray(popularDishes);
+  const groceryEssentialsList = asArray(groceryEssentials);
+
+  const homeFoodCategories = categoriesList.filter(c => c.kind === "home_food");
+  const groceryCategories = categoriesList.filter(c => c.kind === "grocery");
 
   return (
     <div className="flex flex-col gap-10 pb-20">
@@ -36,7 +61,7 @@ export default function Home() {
               <div className="flex gap-4">
                 {[1, 2, 3].map(i => <div key={i} className="w-[280px] h-[140px] bg-muted rounded-2xl shrink-0 animate-pulse" />)}
               </div>
-            ) : offers?.map((offer) => (
+            ) : offersList.map((offer) => (
               <div key={offer.id} className="snap-start">
                 <OfferCard offer={offer} />
               </div>
@@ -54,7 +79,7 @@ export default function Home() {
               {[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="w-20 h-20 rounded-full bg-muted animate-pulse shrink-0" />)}
             </div>
           ) : (
-            <div className="grid grid-rows-2 grid-flow-col gap-x-6 gap-y-4 overflow-x-auto pb-4 hide-scrollbar">
+            <div className="grid grid-cols-3 gap-x-5 gap-y-6 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10">
               {homeFoodCategories.map((category) => (
                 <CategoryTile key={category.id} category={category} />
               ))}
@@ -76,7 +101,7 @@ export default function Home() {
             <LoadingGrid count={4} />
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {featuredChefs?.map((chef, i) => (
+              {featuredChefsList.map((chef, i) => (
                 <motion.div key={chef.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
                   <ChefCard chef={chef} />
                 </motion.div>
@@ -94,7 +119,7 @@ export default function Home() {
             <LoadingGrid count={6} type="dish" />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {popularDishes?.map((dish, i) => (
+              {popularDishesList.map((dish, i) => (
                 <motion.div key={dish.id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.05 }}>
                   <DishCard dish={dish} showChefName />
                 </motion.div>
@@ -131,7 +156,7 @@ export default function Home() {
             <LoadingGrid count={6} />
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-              {groceryEssentials?.map((product) => (
+              {groceryEssentialsList.map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))}
             </div>

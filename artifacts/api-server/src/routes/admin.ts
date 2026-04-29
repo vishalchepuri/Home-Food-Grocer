@@ -1,11 +1,5 @@
 import { Router, type IRouter, type Response } from "express";
 import {
-  db,
-  ordersTable,
-  chefsTable,
-  productsTable,
-} from "@workspace/db";
-import {
   AdminListOrdersQueryParams,
   AdminUpdateOrderStatusParams,
   AdminUpdateOrderStatusBody,
@@ -18,14 +12,31 @@ import {
   AdminUpdateProductBody,
   AdminDeleteProductParams,
 } from "@workspace/api-zod";
-import { desc, eq, sql } from "drizzle-orm";
 import { loadUser, requireAdmin, type AuthedRequest } from "../middlewares/auth";
+import { clearPublicCache } from "../middlewares/publicCache";
+import {
+  type ChefDoc,
+  type OrderDoc,
+  type OrderStatus,
+  type ProductDoc,
+  createChef,
+  createProduct,
+  deleteChef,
+  deleteProduct,
+  getAdminStats,
+  listAdminChefs,
+  listAdminOrders,
+  listAdminProducts,
+  updateChef,
+  updateOrderStatus,
+  updateProduct,
+} from "../lib/firestoreData";
 
 const router: IRouter = Router();
 
 router.use("/admin", loadUser, requireAdmin);
 
-function serializeOrder(row: typeof ordersTable.$inferSelect) {
+function serializeOrder(row: OrderDoc) {
   return {
     id: row.id,
     deviceId: row.deviceId,
@@ -45,11 +56,11 @@ function serializeOrder(row: typeof ordersTable.$inferSelect) {
     tip: Number(row.tip),
     total: Number(row.total),
     notes: row.notes ?? undefined,
-    createdAt: row.createdAt.toISOString(),
+    createdAt: row.createdAt.toDate().toISOString(),
   };
 }
 
-function serializeChef(row: typeof chefsTable.$inferSelect) {
+function serializeChef(row: ChefDoc) {
   return {
     id: row.id,
     name: row.name,
@@ -66,7 +77,7 @@ function serializeChef(row: typeof chefsTable.$inferSelect) {
   };
 }
 
-function serializeProduct(row: typeof productsTable.$inferSelect) {
+function serializeProduct(row: ProductDoc) {
   return {
     id: row.id,
     name: row.name,
@@ -83,62 +94,13 @@ function serializeProduct(row: typeof productsTable.$inferSelect) {
 }
 
 router.get("/admin/stats", async (_req: AuthedRequest, res: Response) => {
-  const orders = await db.select().from(ordersTable);
-  const totalOrders = orders.length;
-  const totalRevenue = orders.reduce((s, o) => s + Number(o.total), 0);
-  const ordersByStatus: Record<string, number> = {};
-  for (const o of orders) {
-    ordersByStatus[o.status] = (ordersByStatus[o.status] ?? 0) + 1;
-  }
-
-  const [{ count: totalChefs }] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(chefsTable);
-  const [{ count: totalProducts }] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(productsTable);
-
-  const byDay = new Map<string, { revenue: number; orders: number }>();
-  const today = new Date();
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(today.getDate() - i);
-    const key = d.toISOString().slice(0, 10);
-    byDay.set(key, { revenue: 0, orders: 0 });
-  }
-  for (const o of orders) {
-    const key = o.createdAt.toISOString().slice(0, 10);
-    if (byDay.has(key)) {
-      const cur = byDay.get(key)!;
-      cur.revenue += Number(o.total);
-      cur.orders += 1;
-    }
-  }
-  const revenueByDay = Array.from(byDay.entries()).map(([day, v]) => ({
-    day,
-    revenue: Number(v.revenue.toFixed(2)),
-    orders: v.orders,
-  }));
-
-  res.json({
-    totalOrders,
-    totalRevenue: Number(totalRevenue.toFixed(2)),
-    totalProducts,
-    totalChefs,
-    ordersByStatus,
-    revenueByDay,
-  });
+  const stats = await getAdminStats();
+  res.json(stats);
 });
 
 router.get("/admin/orders", async (req: AuthedRequest, res: Response) => {
   const params = AdminListOrdersQueryParams.parse(req.query);
-  const rows = await (params.status
-    ? db
-        .select()
-        .from(ordersTable)
-        .where(eq(ordersTable.status, params.status))
-        .orderBy(desc(ordersTable.createdAt))
-    : db.select().from(ordersTable).orderBy(desc(ordersTable.createdAt)));
+  const rows = await listAdminOrders(params.status as OrderStatus | undefined);
   res.json(rows.map(serializeOrder));
 });
 
@@ -149,11 +111,7 @@ router.patch(
       id: Number(req.params.id),
     });
     const body = AdminUpdateOrderStatusBody.parse(req.body);
-    const [updated] = await db
-      .update(ordersTable)
-      .set({ status: body.status })
-      .where(eq(ordersTable.id, id))
-      .returning();
+    const updated = await updateOrderStatus(id, body.status);
     if (!updated) {
       res.status(404).json({ message: "Order not found" });
       return;
@@ -163,28 +121,26 @@ router.patch(
 );
 
 router.get("/admin/chefs", async (_req: AuthedRequest, res: Response) => {
-  const rows = await db.select().from(chefsTable).orderBy(chefsTable.id);
+  const rows = await listAdminChefs();
   res.json(rows.map(serializeChef));
 });
 
 router.post("/admin/chefs", async (req: AuthedRequest, res: Response) => {
   const body = AdminCreateChefBody.parse(req.body);
-  const [inserted] = await db
-    .insert(chefsTable)
-    .values({
-      name: body.name,
-      tagline: body.tagline,
-      cuisine: body.cuisine,
-      rating: body.rating.toString(),
-      etaMinutes: body.etaMinutes,
-      deliveryFee: body.deliveryFee.toString(),
-      imageUrl: body.imageUrl,
-      location: body.location,
-      priceForTwo: body.priceForTwo.toString(),
-      isVeg: body.isVeg,
-      featured: body.featured ?? false,
-    })
-    .returning();
+  const inserted = await createChef({
+    name: body.name,
+    tagline: body.tagline,
+    cuisine: body.cuisine,
+    rating: body.rating,
+    etaMinutes: body.etaMinutes,
+    deliveryFee: body.deliveryFee,
+    imageUrl: body.imageUrl,
+    location: body.location,
+    priceForTwo: body.priceForTwo,
+    isVeg: body.isVeg,
+    featured: body.featured ?? false,
+  });
+  clearPublicCache();
   res.status(201).json(serializeChef(inserted));
 });
 
@@ -193,27 +149,24 @@ router.patch(
   async (req: AuthedRequest, res: Response) => {
     const { id } = AdminUpdateChefParams.parse({ id: Number(req.params.id) });
     const body = AdminUpdateChefBody.parse(req.body);
-    const [updated] = await db
-      .update(chefsTable)
-      .set({
-        name: body.name,
-        tagline: body.tagline,
-        cuisine: body.cuisine,
-        rating: body.rating.toString(),
-        etaMinutes: body.etaMinutes,
-        deliveryFee: body.deliveryFee.toString(),
-        imageUrl: body.imageUrl,
-        location: body.location,
-        priceForTwo: body.priceForTwo.toString(),
-        isVeg: body.isVeg,
-        featured: body.featured ?? false,
-      })
-      .where(eq(chefsTable.id, id))
-      .returning();
+    const updated = await updateChef(id, {
+      name: body.name,
+      tagline: body.tagline,
+      cuisine: body.cuisine,
+      rating: body.rating,
+      etaMinutes: body.etaMinutes,
+      deliveryFee: body.deliveryFee,
+      imageUrl: body.imageUrl,
+      location: body.location,
+      priceForTwo: body.priceForTwo,
+      isVeg: body.isVeg,
+      featured: body.featured ?? false,
+    });
     if (!updated) {
       res.status(404).json({ message: "Chef not found" });
       return;
     }
+    clearPublicCache();
     res.json(serializeChef(updated));
   },
 );
@@ -222,32 +175,31 @@ router.delete(
   "/admin/chefs/:id",
   async (req: AuthedRequest, res: Response) => {
     const { id } = AdminDeleteChefParams.parse({ id: Number(req.params.id) });
-    await db.delete(chefsTable).where(eq(chefsTable.id, id));
+    await deleteChef(id);
+    clearPublicCache();
     res.status(204).send();
   },
 );
 
 router.get("/admin/products", async (_req: AuthedRequest, res: Response) => {
-  const rows = await db.select().from(productsTable).orderBy(productsTable.id);
+  const rows = await listAdminProducts();
   res.json(rows.map(serializeProduct));
 });
 
 router.post("/admin/products", async (req: AuthedRequest, res: Response) => {
   const body = AdminCreateProductBody.parse(req.body);
-  const [inserted] = await db
-    .insert(productsTable)
-    .values({
-      name: body.name,
-      description: body.description,
-      price: body.price.toString(),
-      mrp: body.mrp.toString(),
-      unit: body.unit,
-      imageUrl: body.imageUrl,
-      categoryId: body.categoryId,
-      inStock: body.inStock ?? true,
-      essential: body.essential ?? false,
-    })
-    .returning();
+  const inserted = await createProduct({
+    name: body.name,
+    description: body.description,
+    price: body.price,
+    mrp: body.mrp,
+    unit: body.unit,
+    imageUrl: body.imageUrl,
+    categoryId: body.categoryId,
+    inStock: body.inStock ?? true,
+    essential: body.essential ?? false,
+  });
+  clearPublicCache();
   res.status(201).json(serializeProduct(inserted));
 });
 
@@ -258,25 +210,22 @@ router.patch(
       id: Number(req.params.id),
     });
     const body = AdminUpdateProductBody.parse(req.body);
-    const [updated] = await db
-      .update(productsTable)
-      .set({
-        name: body.name,
-        description: body.description,
-        price: body.price.toString(),
-        mrp: body.mrp.toString(),
-        unit: body.unit,
-        imageUrl: body.imageUrl,
-        categoryId: body.categoryId,
-        inStock: body.inStock ?? true,
-        essential: body.essential ?? false,
-      })
-      .where(eq(productsTable.id, id))
-      .returning();
+    const updated = await updateProduct(id, {
+      name: body.name,
+      description: body.description,
+      price: body.price,
+      mrp: body.mrp,
+      unit: body.unit,
+      imageUrl: body.imageUrl,
+      categoryId: body.categoryId,
+      inStock: body.inStock ?? true,
+      essential: body.essential ?? false,
+    });
     if (!updated) {
       res.status(404).json({ message: "Product not found" });
       return;
     }
+    clearPublicCache();
     res.json(serializeProduct(updated));
   },
 );
@@ -287,7 +236,8 @@ router.delete(
     const { id } = AdminDeleteProductParams.parse({
       id: Number(req.params.id),
     });
-    await db.delete(productsTable).where(eq(productsTable.id, id));
+    await deleteProduct(id);
+    clearPublicCache();
     res.status(204).send();
   },
 );

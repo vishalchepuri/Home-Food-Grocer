@@ -32,6 +32,7 @@ export const ListCategoriesResponse = zod.array(ListCategoriesResponseItem);
 export const ListChefsQueryParams = zod.object({
   cuisine: zod.coerce.string().optional(),
   q: zod.coerce.string().optional(),
+  city: zod.coerce.string().optional(),
 });
 
 export const ListChefsResponseItem = zod.object({

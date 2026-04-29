@@ -1,0 +1,40 @@
+{
+  "hosting": {
+    "public": "artifacts/homebites/dist/public",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "/food-app/api/**",
+        "run": {
+          "serviceId": "homebites-api",
+          "region": "us-central1"
+        }
+      },
+      {
+        "source": "/food-app/**",
+        "destination": "/food-app/index.html"
+      }
+    ],
+    "headers": [
+      {
+        "source": "/food-app/assets/**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
+        ]
+      }
+    ]
+  },
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "storage": {
+    "rules": "storage.rules"
+  }
+}

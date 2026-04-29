@@ -1,0 +1,10 @@
+.git
+.local
+node_modules
+**/node_modules
+**/dist
+**/.vite
+artifacts/homebites/dist
+npm-debug.log
+yarn-error.log
+*.tsbuildinfo

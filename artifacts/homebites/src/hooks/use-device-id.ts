@@ -1,18 +1,13 @@
 import { useState, useEffect } from "react";
-
-const DEVICE_ID_KEY = "homebites_device_id";
+import { useAuth } from "@/hooks/use-auth";
 
 export function useDeviceId() {
+  const { user } = useAuth();
   const [deviceId, setDeviceId] = useState<string>("");
 
   useEffect(() => {
-    let id = localStorage.getItem(DEVICE_ID_KEY);
-    if (!id) {
-      id = crypto.randomUUID();
-      localStorage.setItem(DEVICE_ID_KEY, id);
-    }
-    setDeviceId(id);
-  }, []);
+    setDeviceId(user ? `user:${user.uid}` : `guest:${crypto.randomUUID()}`);
+  }, [user]);
 
   return deviceId;
 }

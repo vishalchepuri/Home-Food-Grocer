@@ -1,47 +1,37 @@
 import { Router, type IRouter } from "express";
-import {
-  db,
-  chefsTable,
-  dishesTable,
-  productsTable,
-  categoriesTable,
-  offersTable,
-} from "@workspace/db";
-import { eq, desc } from "drizzle-orm";
 import { chefRow, dishRow, productRow } from "./catalog";
+import {
+  getFeaturedChefs,
+  getGroceryEssentials,
+  getPopularDishes,
+  listOffers,
+} from "../lib/firestoreData";
 
 const router: IRouter = Router();
 
-router.get("/dashboard/featured-chefs", async (_req, res) => {
-  const rows = await db
-    .select()
-    .from(chefsTable)
-    .where(eq(chefsTable.featured, true))
-    .orderBy(desc(chefsTable.rating));
+router.get("/dashboard/featured-chefs", async (req, res) => {
+  const city = typeof req.query.city === "string" ? req.query.city.trim() : undefined;
+  const rows = await getFeaturedChefs(city);
+  res.set("Cache-Control", "private, max-age=60");
   res.json(rows.map(chefRow));
 });
 
-router.get("/dashboard/popular-dishes", async (_req, res) => {
-  const rows = await db
-    .select({ dish: dishesTable, chefName: chefsTable.name })
-    .from(dishesTable)
-    .innerJoin(chefsTable, eq(dishesTable.chefId, chefsTable.id))
-    .where(eq(dishesTable.popular, true))
-    .orderBy(desc(dishesTable.rating));
+router.get("/dashboard/popular-dishes", async (req, res) => {
+  const city = typeof req.query.city === "string" ? req.query.city.trim() : undefined;
+  const rows = await getPopularDishes(city);
+  res.set("Cache-Control", "private, max-age=60");
   res.json(rows.map((r) => dishRow(r.dish, r.chefName)));
 });
 
 router.get("/dashboard/grocery-essentials", async (_req, res) => {
-  const rows = await db
-    .select({ product: productsTable, categoryName: categoriesTable.name })
-    .from(productsTable)
-    .innerJoin(categoriesTable, eq(productsTable.categoryId, categoriesTable.id))
-    .where(eq(productsTable.essential, true));
+  const rows = await getGroceryEssentials();
+  res.set("Cache-Control", "private, max-age=60");
   res.json(rows.map((r) => productRow(r.product, r.categoryName)));
 });
 
 router.get("/dashboard/offers", async (_req, res) => {
-  const rows = await db.select().from(offersTable);
+  const rows = await listOffers();
+  res.set("Cache-Control", "private, max-age=300");
   res.json(
     rows.map((o) => ({
       id: o.id,

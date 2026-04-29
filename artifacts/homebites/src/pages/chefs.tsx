@@ -1,5 +1,6 @@
 import { useListChefs } from "@workspace/api-client-react";
 import { ChefCard } from "@/components/ChefCard";
+import { DishCard } from "@/components/DishCard";
 import { LoadingGrid } from "@/components/LoadingGrid";
 import { useSearch } from "wouter";
 import { Search, Filter } from "lucide-react";
@@ -7,10 +8,57 @@ import { Input } from "@/components/ui/input";
 import { useState, useEffect } from "react";
 import { useDebounce } from "@/hooks/use-debounce"; // Will create or fallback to simple timeout if doesn't exist. Actually I'll use a local state.
 import { motion } from "framer-motion";
+import { useLocationCity } from "@/hooks/use-location";
+import { useQuery } from "@tanstack/react-query";
+import { apiPath } from "@/lib/api-path";
+import type { Dish } from "@workspace/api-client-react";
 
-const POPULAR_CUISINES = ["North Indian", "South Indian", "Punjabi", "Bengali", "Mughlai", "Chinese", "Healthy"];
+const POPULAR_CUISINES = [
+  "North Indian",
+  "South Indian",
+  "Biryani",
+  "Chinese",
+  "Continental",
+  "Italian",
+  "Mexican",
+  "Thai",
+  "Arabian",
+  "Desserts",
+  "Japanese",
+  "Korean",
+  "Fast Food",
+  "Street Food",
+  "Pizza",
+  "Burgers",
+  "Cafe",
+  "Andhra",
+  "Kerala",
+  "Rajasthani",
+  "Mediterranean",
+  "Lebanese",
+  "Turkish",
+  "Vietnamese",
+  "Momos",
+  "Rolls & Wraps",
+  "BBQ & Grill",
+  "Breakfast",
+  "Salads",
+  "Juices & Shakes",
+  "Ice Cream",
+  "North East",
+  "Odia",
+  "Hyderabadi",
+  "Punjabi",
+  "Bengali",
+  "Mughlai",
+  "Healthy",
+  "Coastal",
+  "Gujarati",
+  "Bakery",
+];
 
 export default function ChefsPage() {
+  const { city } = useLocationCity();
   const searchString = useSearch();
   const urlParams = new URLSearchParams(searchString);
   const initialCategory = urlParams.get("category") || "";
@@ -26,7 +74,17 @@ export default function ChefsPage() {
 
   const { data: chefs, isLoading } = useListChefs({
     q: debouncedSearch || undefined,
-    cuisine: selectedCuisine || undefined
+    cuisine: selectedCuisine || undefined,
+    city,
+  } as { q?: string; cuisine?: string; city?: string });
+  const { data: categoryDishes, isLoading: isLoadingDishes } = useQuery<Dish[]>({
+    queryKey: ["category-dishes", selectedCuisine],
+    enabled: !!selectedCuisine,
+    queryFn: async () => {
+      const res = await fetch(apiPath(`/api/search?q=${encodeURIComponent(selectedCuisine)}`));
+      const data = await res.json();
+      return Array.isArray(data.dishes) ? data.dishes.slice(0, 12) : [];
+    },
   });
 
   return (
@@ -97,6 +155,34 @@ export default function ChefsPage() {
           ))}
         </div>
       )}
+
+      {selectedCuisine ? (
+        <section className="mt-12">
+          <div className="mb-5 flex items-center justify-between">
+            <div>
+              <h2 className="font-display text-2xl font-bold">
+                Popular {selectedCuisine} food items
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Dishes attached to restaurants serving this cuisine.
+              </p>
+            </div>
+          </div>
+          {isLoadingDishes ? (
+            <LoadingGrid count={6} type="dish" />
+          ) : categoryDishes && categoryDishes.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {categoryDishes.map((dish) => (
+                <DishCard key={dish.id} dish={dish} showChefName />
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-border bg-muted/30 p-8 text-center text-muted-foreground">
+              No food items found for this cuisine yet.
+            </div>
+          )}
+        </section>
+      ) : null}
     </div>
   );
 }

@@ -1,19 +1,12 @@
-import { useEffect, useRef } from "react";
+import { useState, type FormEvent } from "react";
 import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
-import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
-import {
-  ClerkProvider,
-  SignIn,
-  SignUp,
-  Show,
-  useClerk,
-} from "@clerk/react";
-import { shadcn } from "@clerk/themes";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { CartProvider } from "@/hooks/use-cart";
 import { LocationProvider } from "@/hooks/use-location";
 import { FavoritesProvider } from "@/hooks/use-favorites";
+import { AuthProvider, useAuth } from "@/hooks/use-auth";
 
 import { AppHeader } from "@/components/AppHeader";
 import { AppFooter } from "@/components/AppFooter";
@@ -31,130 +24,119 @@ import CheckoutPage from "@/pages/checkout";
 import OrdersPage from "@/pages/orders";
 import OrderDetailPage from "@/pages/order-detail";
 import FavoritesPage from "@/pages/favorites";
+import TermsPage from "@/pages/terms";
+import { StaticPage } from "@/pages/static-page";
 import NotFound from "@/pages/not-found";
 import AdminDashboard from "@/pages/admin/dashboard";
 import AdminOrders from "@/pages/admin/orders";
 import AdminChefs from "@/pages/admin/chefs";
 import AdminProducts from "@/pages/admin/products";
 
-const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
-const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
-
-if (!clerkPubKey) {
-  throw new Error("Missing VITE_CLERK_PUBLISHABLE_KEY");
-}
-
-function stripBase(path: string): string {
-  return basePath && path.startsWith(basePath)
-    ? path.slice(basePath.length) || "/"
-    : path;
-}
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: false,
+      staleTime: 30 * 60 * 1000,
+      gcTime: 60 * 60 * 1000,
       retry: 1,
     },
   },
 });
 
-const clerkAppearance = {
-  theme: shadcn,
-  cssLayerName: "clerk",
-  options: {
-    logoPlacement: "inside" as const,
-    logoLinkUrl: basePath || "/",
-    logoImageUrl: `${window.location.origin}${basePath}/logo.svg`,
-  },
-  variables: {
-    colorPrimary: "#ff5a1f",
-    colorForeground: "#1c130d",
-    colorMutedForeground: "#6b5e54",
-    colorDanger: "#dc2626",
-    colorBackground: "#ffffff",
-    colorInput: "#ffffff",
-    colorInputForeground: "#1c130d",
-    colorNeutral: "#e5dfd9",
-    fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
-    borderRadius: "0.75rem",
-  },
-  elements: {
-    rootBox: "w-full",
-    cardBox: "bg-white rounded-2xl w-[440px] max-w-full overflow-hidden shadow-xl border border-border",
-    card: "!shadow-none !border-0 !bg-transparent !rounded-none",
-    footer: "!shadow-none !border-0 !bg-transparent !rounded-none",
-    headerTitle: "font-display font-bold text-2xl text-foreground",
-    headerSubtitle: "text-muted-foreground text-sm",
-    socialButtonsBlockButtonText: "text-foreground font-medium",
-    formFieldLabel: "text-foreground font-medium",
-    footerActionLink: "text-primary font-semibold hover:text-primary/80",
-    footerActionText: "text-muted-foreground",
-    dividerText: "text-muted-foreground",
-    identityPreviewEditButton: "text-primary",
-    formFieldSuccessText: "text-green-600",
-    alertText: "text-destructive",
-    logoBox: "mb-2",
-    logoImage: "h-10",
-    socialButtonsBlockButton:
-      "border border-border bg-white hover:bg-muted",
-    formButtonPrimary:
-      "bg-primary text-primary-foreground hover:bg-primary/90 font-semibold",
-    formFieldInput: "bg-white border border-border text-foreground",
-    footerAction: "py-3",
-    dividerLine: "bg-border",
-    alert: "bg-destructive/10 border border-destructive/30",
-    otpCodeFieldInput: "bg-white border border-border text-foreground",
-    formFieldRow: "",
-    main: "gap-4",
-  },
-};
+function AuthCard({
+  title,
+  subtitle,
+  onSubmit,
+  submitLabel,
+}: {
+  title: string;
+  subtitle: string;
+  onSubmit: (email: string, password: string) => Promise<void>;
+  submitLabel: string;
+}) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [, setLocation] = useLocation();
 
-function SignInPage() {
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setBusy(true);
+    try {
+      await onSubmit(email, password);
+      setLocation("/");
+    } catch (err) {
+      setError((err as Error).message || "Authentication failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="flex min-h-[100dvh] items-center justify-center bg-gradient-to-br from-orange-50 to-orange-100 px-4 py-12">
-      <SignIn
-        routing="path"
-        path={`${basePath}/sign-in`}
-        signUpUrl={`${basePath}/sign-up`}
-      />
+      <form
+        onSubmit={handleSubmit}
+        className="bg-white rounded-2xl w-[440px] max-w-full p-8 shadow-xl border border-border"
+      >
+        <h1 className="font-display font-bold text-2xl text-foreground">{title}</h1>
+        <p className="text-muted-foreground text-sm mt-2">{subtitle}</p>
+        <div className="mt-6 space-y-4">
+          <input
+            className="w-full border border-border rounded-lg px-3 py-2"
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+          <input
+            className="w-full border border-border rounded-lg px-3 py-2"
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+        </div>
+        {error ? <p className="text-sm text-destructive mt-3">{error}</p> : null}
+        <button
+          type="submit"
+          className="mt-5 w-full bg-primary text-primary-foreground rounded-lg py-2 font-semibold"
+          disabled={busy}
+        >
+          {busy ? "Please wait..." : submitLabel}
+        </button>
+      </form>
     </div>
+  );
+}
+
+function SignInPage() {
+  const { signIn } = useAuth();
+  return (
+    <AuthCard
+      title="Welcome back to HomeBites"
+      subtitle="Sign in to track orders, save addresses and reorder favourites"
+      onSubmit={signIn}
+      submitLabel="Sign in"
+    />
   );
 }
 
 function SignUpPage() {
+  const { signUp } = useAuth();
   return (
-    <div className="flex min-h-[100dvh] items-center justify-center bg-gradient-to-br from-orange-50 to-orange-100 px-4 py-12">
-      <SignUp
-        routing="path"
-        path={`${basePath}/sign-up`}
-        signInUrl={`${basePath}/sign-in`}
-      />
-    </div>
+    <AuthCard
+      title="Create your HomeBites account"
+      subtitle="Order home-cooked meals and daily essentials in minutes"
+      onSubmit={signUp}
+      submitLabel="Sign up"
+    />
   );
-}
-
-function ClerkQueryClientCacheInvalidator() {
-  const { addListener } = useClerk();
-  const qc = useQueryClient();
-  const prevUserIdRef = useRef<string | null | undefined>(undefined);
-
-  useEffect(() => {
-    const unsubscribe = addListener(({ user }) => {
-      const userId = user?.id ?? null;
-      if (
-        prevUserIdRef.current !== undefined &&
-        prevUserIdRef.current !== userId
-      ) {
-        qc.clear();
-      }
-      prevUserIdRef.current = userId;
-    });
-    return unsubscribe;
-  }, [addListener, qc]);
-
-  return null;
 }
 
 function StorefrontLayout({ children }: { children: React.ReactNode }) {
@@ -183,6 +165,25 @@ function StorefrontSwitch() {
         <Route path="/orders" component={OrdersPage} />
         <Route path="/orders/:id" component={OrderDetailPage} />
         <Route path="/favorites" component={FavoritesPage} />
+        <Route path="/terms" component={TermsPage} />
+        <Route path="/privacy">
+          <StaticPage page="privacy" />
+        </Route>
+        <Route path="/refunds">
+          <StaticPage page="refund" />
+        </Route>
+        <Route path="/about">
+          <StaticPage page="about" />
+        </Route>
+        <Route path="/partner">
+          <StaticPage page="partner" />
+        </Route>
+        <Route path="/careers">
+          <StaticPage page="careers" />
+        </Route>
+        <Route path="/healthy-eating">
+          <StaticPage page="healthy" />
+        </Route>
         <Route component={NotFound} />
       </Switch>
     </StorefrontLayout>
@@ -212,34 +213,10 @@ function AppRoutes() {
   );
 }
 
-function ClerkProviderWithRoutes() {
-  const [, setLocation] = useLocation();
+function ProvidersWithRoutes() {
   return (
-    <ClerkProvider
-      publishableKey={clerkPubKey}
-      proxyUrl={clerkProxyUrl}
-      appearance={clerkAppearance}
-      signInUrl={`${basePath}/sign-in`}
-      signUpUrl={`${basePath}/sign-up`}
-      localization={{
-        signIn: {
-          start: {
-            title: "Welcome back to HomeBites",
-            subtitle: "Sign in to track orders, save addresses and reorder favourites",
-          },
-        },
-        signUp: {
-          start: {
-            title: "Create your HomeBites account",
-            subtitle: "Order home-cooked meals & daily essentials in minutes",
-          },
-        },
-      }}
-      routerPush={(to) => setLocation(stripBase(to))}
-      routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
-    >
+    <AuthProvider>
       <QueryClientProvider client={queryClient}>
-        <ClerkQueryClientCacheInvalidator />
         <TooltipProvider>
           <LocationProvider>
             <FavoritesProvider>
@@ -251,14 +228,14 @@ function ClerkProviderWithRoutes() {
           <Toaster />
         </TooltipProvider>
       </QueryClientProvider>
-    </ClerkProvider>
+    </AuthProvider>
   );
 }
 
 function App() {
   return (
     <WouterRouter base={basePath}>
-      <ClerkProviderWithRoutes />
+      <ProvidersWithRoutes />
     </WouterRouter>
   );
 }

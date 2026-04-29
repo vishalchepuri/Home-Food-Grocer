@@ -26,8 +26,19 @@ if (!basePath) {
   );
 }
 
+const apiPort = process.env.API_PORT ?? "8080";
+const normalizedBasePath = basePath.endsWith("/") ? basePath : `${basePath}/`;
+const outDir =
+  normalizedBasePath === "/"
+    ? path.resolve(import.meta.dirname, "dist/public")
+    : path.resolve(
+        import.meta.dirname,
+        "dist/public",
+        normalizedBasePath.replace(/^\/|\/$/g, ""),
+      );
+
 export default defineConfig({
-  base: basePath,
+  base: normalizedBasePath,
   plugins: [
     react(),
     tailwindcss({ optimize: false }),
@@ -55,7 +66,7 @@ export default defineConfig({
   },
   root: path.resolve(import.meta.dirname),
   build: {
-    outDir: path.resolve(import.meta.dirname, "dist/public"),
+    outDir,
     emptyOutDir: true,
   },
   server: {
@@ -63,6 +74,12 @@ export default defineConfig({
     strictPort: true,
     host: "0.0.0.0",
     allowedHosts: true,
+    proxy: {
+      "/api": {
+        target: `http://localhost:${apiPort}`,
+        changeOrigin: true,
+      },
+    },
     fs: {
       strict: true,
     },

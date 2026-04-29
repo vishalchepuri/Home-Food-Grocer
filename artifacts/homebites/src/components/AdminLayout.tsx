@@ -1,6 +1,5 @@
 import { ReactNode } from "react";
 import { Link, useLocation, Redirect } from "wouter";
-import { Show } from "@clerk/react";
 import {
   LayoutDashboard,
   Receipt,
@@ -13,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useMe } from "@/hooks/use-me";
 import { useMutation } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/use-auth";
 
 const NAV = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
@@ -22,17 +22,11 @@ const NAV = [
 ];
 
 export function AdminLayout({ children }: { children: ReactNode }) {
+  const { isSignedIn, isLoading } = useAuth();
+  if (isLoading) return <AdminLoading />;
+  if (!isSignedIn) return <Redirect to="/sign-in" />;
   return (
-    <Show
-      when="signed-in"
-      fallback={
-        <Show when="signed-out" fallback={<AdminLoading />}>
-          <Redirect to="/sign-in" />
-        </Show>
-      }
-    >
-      <AdminGate>{children}</AdminGate>
-    </Show>
+    <AdminGate>{children}</AdminGate>
   );
 }
 
@@ -46,19 +40,29 @@ function AdminLoading() {
 
 function AdminGate({ children }: { children: ReactNode }) {
   const { data: me, isLoading, refetch } = useMe();
+  const { user } = useAuth();
 
   const bootstrap = useMutation({
     mutationFn: async () => {
+      const token = await user?.getIdToken();
       const res = await fetch(
         `${import.meta.env.BASE_URL}api/me/claim-admin`,
         {
           method: "POST",
           credentials: "include",
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         },
       );
       if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || "Bootstrap failed");
+        let message = "Bootstrap failed";
+        try {
+          const body = await res.json();
+          message = body.message ?? body.error ?? message;
+        } catch {
+          const text = await res.text();
+          if (text) message = text;
+        }
+        throw new Error(message);
       }
       return res.json();
     },
@@ -90,6 +94,12 @@ function AdminGate({ children }: { children: ReactNode }) {
           {bootstrap.isError ? (
             <p className="text-sm text-destructive mb-4">
               {(bootstrap.error as Error).message}
+            </p>
+          ) : null}
+          {!me ? (
+            <p className="text-xs text-muted-foreground mb-4">
+              If this stays blocked, start the API server with your Firebase
+              service account so admin status can be verified.
             </p>
           ) : null}
           <div className="flex gap-3 justify-center">
@@ -192,4 +202,3 @@ function AdminShell({ children }: { children: ReactNode }) {
     </div>
   );
 }
-

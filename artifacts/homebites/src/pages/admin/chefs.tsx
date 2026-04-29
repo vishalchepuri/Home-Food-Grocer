@@ -15,6 +15,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { uploadImage } from "@/lib/storage";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -50,18 +58,85 @@ const EMPTY: UpsertChefRequest = {
   featured: false,
 };
 
+const CUISINES = [
+  "North Indian",
+  "South Indian",
+  "Biryani",
+  "Italian",
+  "Mexican",
+  "Thai",
+  "Arabian",
+  "Japanese",
+  "Korean",
+  "Continental",
+  "Fast Food",
+  "Street Food",
+  "Pizza",
+  "Burgers",
+  "Cafe",
+  "Andhra",
+  "Telangana",
+  "Kerala",
+  "Tamil",
+  "Maharashtrian",
+  "Rajasthani",
+  "Mediterranean",
+  "Lebanese",
+  "Turkish",
+  "Vietnamese",
+  "Momos",
+  "Rolls & Wraps",
+  "BBQ & Grill",
+  "Breakfast",
+  "Salads",
+  "Juices & Shakes",
+  "Ice Cream",
+  "North East",
+  "Odia",
+  "Hyderabadi",
+  "Punjabi",
+  "Mughlai",
+  "Bengali",
+  "Healthy",
+  "Chinese",
+  "Coastal",
+  "Gujarati",
+  "Bakery",
+];
+
 export default function AdminChefs() {
   const { data, isLoading } = useAdminListChefs();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Chef | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState("all");
+  const [newLocation, setNewLocation] = useState("");
+  const [customLocations, setCustomLocations] = useState<string[]>([]);
+
+  const locations = Array.from(
+    new Set([...(data ?? []).map((chef) => chef.location), ...customLocations]),
+  ).sort((a, b) => a.localeCompare(b));
+  const visibleChefs =
+    selectedLocation === "all"
+      ? data ?? []
+      : (data ?? []).filter((chef) => chef.location === selectedLocation);
+
+  const addLocation = () => {
+    const trimmed = newLocation.trim();
+    if (!trimmed) return;
+    setCustomLocations((prev) =>
+      prev.includes(trimmed) ? prev : [...prev, trimmed],
+    );
+    setSelectedLocation(trimmed);
+    setNewLocation("");
+  };
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-display font-bold text-3xl">Chefs</h1>
+          <h1 className="font-display font-bold text-3xl">Restaurants</h1>
           <p className="text-muted-foreground mt-1">
-            Add, edit and remove home chefs
+            Add, edit and remove restaurants by location
           </p>
         </div>
         <Dialog
@@ -74,11 +149,15 @@ export default function AdminChefs() {
           <DialogTrigger asChild>
             <Button onClick={() => setEditing(null)}>
               <Plus className="w-4 h-4 mr-2" />
-              Add chef
+              Add restaurant
             </Button>
           </DialogTrigger>
           <ChefFormDialog
             chef={editing}
+            locations={locations}
+            defaultLocation={
+              selectedLocation === "all" ? locations[0] : selectedLocation
+            }
             onClose={() => {
               setOpen(false);
               setEditing(null);
@@ -87,13 +166,52 @@ export default function AdminChefs() {
         </Dialog>
       </div>
 
+      <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
+        <div className="grid gap-4 lg:grid-cols-[260px_1fr]">
+          <div>
+            <Label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Active location
+            </Label>
+            <Select value={selectedLocation} onValueChange={setSelectedLocation}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All locations</SelectItem>
+                {locations.map((location) => (
+                  <SelectItem key={location} value={location}>
+                    {location}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Add new location
+            </Label>
+            <div className="flex gap-2">
+              <Input
+                value={newLocation}
+                onChange={(e) => setNewLocation(e.target.value)}
+                placeholder="Warangal, Hyderabad, Bangalore..."
+              />
+              <Button type="button" onClick={addLocation}>
+                <Plus className="w-4 h-4 mr-2" />
+                Add
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {isLoading ? (
         <div className="py-20 flex justify-center">
           <Loader2 className="w-6 h-6 animate-spin text-primary" />
         </div>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {data?.map((c) => (
+          {visibleChefs.map((c) => (
             <ChefCard
               key={c.id}
               chef={c}
@@ -103,9 +221,9 @@ export default function AdminChefs() {
               }}
             />
           ))}
-          {data && data.length === 0 ? (
+          {visibleChefs.length === 0 ? (
             <div className="col-span-full text-center py-20 text-muted-foreground">
-              No chefs yet — add your first one
+              No restaurants in this location yet. Add the first one.
             </div>
           ) : null}
         </div>
@@ -152,6 +270,8 @@ function ChefCard({ chef, onEdit }: { chef: Chef; onEdit: () => void }) {
           {chef.tagline}
         </p>
         <div className="flex flex-wrap gap-2 text-xs text-muted-foreground mb-3">
+          <span>{chef.location}</span>
+          <span>·</span>
           <span>{chef.cuisine}</span>
           <span>·</span>
           <span>★ {chef.rating}</span>
@@ -203,9 +323,13 @@ function ChefCard({ chef, onEdit }: { chef: Chef; onEdit: () => void }) {
 
 function ChefFormDialog({
   chef,
+  locations,
+  defaultLocation,
   onClose,
 }: {
   chef: Chef | null;
+  locations: string[];
+  defaultLocation?: string;
   onClose: () => void;
 }) {
   const qc = useQueryClient();
@@ -225,8 +349,9 @@ function ChefFormDialog({
           isVeg: chef.isVeg,
           featured: chef.featured ?? false,
         }
-      : EMPTY,
+      : { ...EMPTY, location: defaultLocation ?? "" },
   );
+  const [isUploading, setIsUploading] = useState(false);
 
   const onSettled = () => {
     qc.invalidateQueries({ queryKey: getAdminListChefsQueryKey() });
@@ -263,7 +388,25 @@ function ChefFormDialog({
     },
   });
 
-  const isPending = create.isPending || update.isPending;
+  const isPending = create.isPending || update.isPending || isUploading;
+
+  const uploadChefImage = async (file: File | undefined) => {
+    if (!file) return;
+    setIsUploading(true);
+    try {
+      const imageUrl = await uploadImage(file, "chefs");
+      setForm((current) => ({ ...current, imageUrl }));
+      toast({ title: "Image uploaded" });
+    } catch (err) {
+      toast({
+        title: "Upload failed",
+        description: (err as Error).message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -292,23 +435,66 @@ function ChefFormDialog({
           />
         </Field>
         <Field label="Cuisine">
-          <Input
-            required
+          <Select
             value={form.cuisine}
-            onChange={(e) => setForm({ ...form, cuisine: e.target.value })}
-          />
+            onValueChange={(cuisine) => setForm({ ...form, cuisine })}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choose cuisine" />
+            </SelectTrigger>
+            <SelectContent>
+              {CUISINES.map((cuisine) => (
+                <SelectItem key={cuisine} value={cuisine}>
+                  {cuisine}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </Field>
         <Field label="Location">
-          <Input
-            required
-            value={form.location}
-            onChange={(e) => setForm({ ...form, location: e.target.value })}
-          />
+          {locations.length > 0 ? (
+            <Select
+              value={form.location}
+              onValueChange={(location) => setForm({ ...form, location })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Choose location" />
+              </SelectTrigger>
+              <SelectContent>
+                {locations.map((location) => (
+                  <SelectItem key={location} value={location}>
+                    {location}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <Input
+              required
+              value={form.location}
+              onChange={(e) => setForm({ ...form, location: e.target.value })}
+            />
+          )}
         </Field>
-        <Field label="Image URL" className="col-span-2">
+        <Field label="Image" className="col-span-2">
+          {form.imageUrl ? (
+            <img
+              src={form.imageUrl}
+              alt=""
+              className="mb-3 h-32 w-full rounded-lg object-cover"
+            />
+          ) : null}
+          <Input
+            type="file"
+            accept="image/*"
+            disabled={isUploading}
+            onChange={(e) => void uploadChefImage(e.target.files?.[0])}
+          />
           <Input
             required
             type="url"
+            className="mt-2"
+            placeholder="Firebase Storage download URL"
             value={form.imageUrl}
             onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
           />

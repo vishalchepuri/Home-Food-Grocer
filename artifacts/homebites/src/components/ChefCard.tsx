@@ -27,6 +27,11 @@ export function ChefCard({ chef }: ChefCardProps) {
                 Pure Veg
               </div>
             )}
+            {chef.isOpen === false && (
+              <div className="absolute bottom-2 left-2 rounded bg-black/75 px-2 py-1 text-xs font-semibold text-white">
+                Closed until {chef.opensAt ?? "10:00"}
+              </div>
+            )}
             <div className="absolute top-2 left-2">
               <FavoriteButton
                 size="sm"
@@ -56,7 +61,9 @@ export function ChefCard({ chef }: ChefCardProps) {
             <div className="mt-auto flex items-center justify-between text-xs text-muted-foreground pt-2 border-t border-border/50">
               <div className="flex items-center gap-1">
                 <Clock className="w-3.5 h-3.5" />
-                <span>{chef.etaMinutes} mins</span>
+                <span>
+                  {chef.opensAt ?? "10:00"}-{chef.closesAt ?? "22:00"}
+                </span>
               </div>
               <div className="flex items-center gap-1">
                 <MapPin className="w-3.5 h-3.5" />

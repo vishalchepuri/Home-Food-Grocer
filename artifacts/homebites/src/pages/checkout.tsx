@@ -19,6 +19,61 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2, Tag, X, Check } from "lucide-react";
+import { useLocationCity } from "@/hooks/use-location";
+
+const CITY_PINCODE_PREFIXES: Record<string, string[]> = {
+  Hyderabad: ["500"],
+  Warangal: ["506"],
+  Karimnagar: ["505"],
+  "Rajanna Sircilla": ["505"],
+  Nizamabad: ["503"],
+  Khammam: ["507"],
+  Bangalore: ["560"],
+  Mysore: ["570"],
+  Mangalore: ["575"],
+  Chennai: ["600"],
+  Coimbatore: ["641"],
+  Madurai: ["625"],
+  Pondicherry: ["605"],
+  Kochi: ["682"],
+  Thiruvananthapuram: ["695"],
+  Mumbai: ["400"],
+  Pune: ["411"],
+  Nagpur: ["440"],
+  Delhi: ["110"],
+  Gurgaon: ["122"],
+  Noida: ["201"],
+  Kolkata: ["700"],
+  Ahmedabad: ["380"],
+  Surat: ["395"],
+  Jaipur: ["302"],
+  Lucknow: ["226"],
+  Chandigarh: ["160"],
+  Bhubaneswar: ["751"],
+  Visakhapatnam: ["530"],
+  Vijayawada: ["520"],
+  Goa: ["403"],
+};
+
+function normalize(text: string) {
+  return text.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function getDeliveryError(selectedCity: string, address: AddressForm) {
+  const addressCity = normalize(address.city);
+  const activeCity = normalize(selectedCity);
+  if (addressCity && addressCity !== activeCity) {
+    return `Cannot deliver to ${address.city} while your selected location is ${selectedCity}. Change the location or enter a ${selectedCity} address.`;
+  }
+
+  const prefixes = CITY_PINCODE_PREFIXES[selectedCity] ?? [];
+  const pincode = address.pincode.trim();
+  if (prefixes.length > 0 && !prefixes.some((prefix) => pincode.startsWith(prefix))) {
+    return `Cannot deliver to pincode ${pincode} for ${selectedCity}. Please use a ${selectedCity} serviceable pincode.`;
+  }
+
+  return null;
+}
 
 const addressSchema = z.object({
   fullName: z.string().min(2, "Name is required"),
@@ -42,6 +97,7 @@ type CardForm = z.infer<typeof cardSchema>;
 
 export default function CheckoutPage() {
   const { items, totals, clear } = useCart();
+  const { city: selectedCity } = useLocationCity();
   const deviceId = useDeviceId();
   const searchString = useSearch();
   const tip = parseInt(new URLSearchParams(searchString).get("tip") || "0", 10);
@@ -120,6 +176,16 @@ export default function CheckoutPage() {
     if (!addressValid) return;
 
     const addressData = addressForm.getValues();
+    const deliveryError = getDeliveryError(selectedCity, addressData);
+    if (deliveryError) {
+      addressForm.setError("pincode", { type: "manual", message: deliveryError });
+      toast({
+        title: "Cannot deliver to this location",
+        description: deliveryError,
+        variant: "destructive",
+      });
+      return;
+    }
 
     setIsProcessing(true);
 

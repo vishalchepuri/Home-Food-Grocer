@@ -7,6 +7,9 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { doc, onSnapshot, setDoc } from "firebase/firestore";
+import { firestore } from "@/lib/firebase";
+import { useAuth } from "@/hooks/use-auth";
 
 export const CITIES: { name: string; region: string }[] = [
   { name: "Hyderabad", region: "Telangana" },
@@ -42,7 +45,6 @@ export const CITIES: { name: string; region: string }[] = [
   { name: "Goa", region: "Goa" },
 ];
 
-const STORAGE_KEY = "homebites:city";
 const DEFAULT_CITY = "Hyderabad";
 
 type LocationContextValue = {
@@ -54,18 +56,40 @@ type LocationContextValue = {
 const LocationContext = createContext<LocationContextValue | null>(null);
 
 export function LocationProvider({ children }: { children: ReactNode }) {
-  const [city, setCityState] = useState<string>(() => {
-    if (typeof window === "undefined") return DEFAULT_CITY;
-    return localStorage.getItem(STORAGE_KEY) ?? DEFAULT_CITY;
-  });
+  const { user } = useAuth();
+  const [city, setCityState] = useState<string>(DEFAULT_CITY);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, city);
-    } catch {
-      /* ignore */
+    if (!user) {
+      setCityState(DEFAULT_CITY);
+      setHydrated(true);
+      return;
     }
-  }, [city]);
+
+    setHydrated(false);
+    const ref = doc(firestore, "users", user.uid, "appState", "preferences");
+    return onSnapshot(
+      ref,
+      (snapshot) => {
+        const data = snapshot.data();
+        setCityState(typeof data?.city === "string" ? data.city : DEFAULT_CITY);
+        setHydrated(true);
+      },
+      (err) => {
+        console.error("Failed to load preferences from Firestore", err);
+        setHydrated(true);
+      },
+    );
+  }, [user]);
+
+  useEffect(() => {
+    if (!hydrated || !user) return;
+    const ref = doc(firestore, "users", user.uid, "appState", "preferences");
+    void setDoc(ref, { city, updatedAt: Date.now() }, { merge: true }).catch(
+      (err) => console.error("Failed to save preferences to Firestore", err),
+    );
+  }, [city, hydrated, user]);
 
   const setCity = useCallback((next: string) => setCityState(next), []);
 
