@@ -10,7 +10,7 @@ type CacheEntry = {
 
 const cache = new Map<string, CacheEntry>();
 const cacheDir = path.resolve(process.cwd(), "..", "..", ".local", "api-response-cache");
-const CACHE_VERSION = "2026-04-30-location-fill";
+const CACHE_VERSION = "2026-04-30-location-menu-fill";
 
 const CACHEABLE_PREFIXES = [
   "/categories",

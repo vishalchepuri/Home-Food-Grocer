@@ -8,6 +8,7 @@
     "seed": "tsx ./src/seed.ts",
     "seed:firebase": "tsx ./src/seed-firebase.ts",
     "seed:firebase:rest": "tsx ./src/seed-firebase-rest.ts",
+    "fill:missing-dishes": "tsx ./src/fill-missing-dishes.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
