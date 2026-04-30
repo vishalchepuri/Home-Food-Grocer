@@ -49,7 +49,9 @@ jobs:
         run: pnpm run typecheck
 
       - name: Build frontend
-        run: pnpm --filter "./artifacts/homebites" run build
+        run: |
+          pnpm --filter "./artifacts/homebites" run build
+          pnpm --filter "./artifacts/homebites" run build:root
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2

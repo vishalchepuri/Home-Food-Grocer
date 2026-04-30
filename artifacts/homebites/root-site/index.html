@@ -1,0 +1,462 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vishal Chepuri | Projects, Products, Food App</title>
+    <meta
+      name="description"
+      content="Vishal Chepuri builds useful digital products. Explore upcoming products, read the blog, and open the HomeBites food app."
+    />
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #102523;
+        --muted: #5f706d;
+        --line: #dce8e4;
+        --card: rgba(255, 255, 255, 0.9);
+        --brand: #099b8f;
+        --brand-dark: #06766d;
+        --warm: #ff7a1a;
+        --soft: #f4faf7;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+        color: var(--ink);
+        background: #f8fcfa;
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      .nav {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+        padding: 18px clamp(20px, 5vw, 72px);
+        border-bottom: 1px solid rgba(16, 37, 35, 0.08);
+        background: rgba(248, 252, 250, 0.92);
+        backdrop-filter: blur(12px);
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-weight: 800;
+        font-size: 20px;
+      }
+
+      .mark {
+        display: grid;
+        width: 38px;
+        height: 38px;
+        place-items: center;
+        border-radius: 10px;
+        background: var(--brand);
+        color: white;
+        font-weight: 900;
+      }
+
+      .links {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        color: var(--muted);
+        font-weight: 700;
+        font-size: 14px;
+      }
+
+      .button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 46px;
+        padding: 0 20px;
+        border-radius: 999px;
+        border: 1px solid transparent;
+        background: var(--brand);
+        color: white;
+        font-weight: 800;
+        box-shadow: 0 10px 24px rgba(9, 155, 143, 0.22);
+      }
+
+      .button.secondary {
+        background: white;
+        color: var(--ink);
+        border-color: var(--line);
+        box-shadow: none;
+      }
+
+      .hero {
+        min-height: 84vh;
+        display: grid;
+        align-items: end;
+        background:
+          linear-gradient(90deg, rgba(8, 26, 24, 0.78), rgba(8, 26, 24, 0.24)),
+          url("https://images.unsplash.com/photo-1556745757-8d76bdb6984b?auto=format&fit=crop&w=2200&q=85")
+            center / cover;
+      }
+
+      .hero-inner {
+        width: min(1120px, calc(100% - 40px));
+        margin: 0 auto;
+        padding: 84px 0 96px;
+        color: white;
+      }
+
+      .eyebrow {
+        margin: 0 0 14px;
+        font-size: 14px;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #bdf4ec;
+      }
+
+      h1 {
+        max-width: 780px;
+        margin: 0;
+        font-size: clamp(42px, 7vw, 86px);
+        line-height: 0.98;
+        letter-spacing: 0;
+      }
+
+      .hero p {
+        max-width: 620px;
+        margin: 24px 0 0;
+        color: rgba(255, 255, 255, 0.86);
+        font-size: 20px;
+        line-height: 1.55;
+      }
+
+      .hero-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px;
+        margin-top: 34px;
+      }
+
+      section {
+        padding: 84px clamp(20px, 5vw, 72px);
+      }
+
+      .section-inner {
+        width: min(1120px, 100%);
+        margin: 0 auto;
+      }
+
+      .section-head {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 28px;
+        margin-bottom: 28px;
+      }
+
+      h2 {
+        margin: 0;
+        font-size: clamp(30px, 4vw, 48px);
+        line-height: 1.08;
+      }
+
+      .lead {
+        max-width: 560px;
+        margin: 12px 0 0;
+        color: var(--muted);
+        font-size: 17px;
+        line-height: 1.6;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 18px;
+      }
+
+      .card {
+        min-height: 260px;
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: white;
+        box-shadow: 0 18px 48px rgba(16, 37, 35, 0.08);
+      }
+
+      .card-media {
+        height: 148px;
+        background-size: cover;
+        background-position: center;
+      }
+
+      .card-body {
+        padding: 20px;
+      }
+
+      .card h3 {
+        margin: 0;
+        font-size: 20px;
+      }
+
+      .card p {
+        margin: 10px 0 0;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+
+      .badge {
+        display: inline-flex;
+        margin-top: 18px;
+        padding: 7px 10px;
+        border-radius: 999px;
+        background: #e8f8f5;
+        color: var(--brand-dark);
+        font-weight: 800;
+        font-size: 12px;
+      }
+
+      .food-band {
+        background: #112b28;
+        color: white;
+      }
+
+      .food-feature {
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: 36px;
+        align-items: center;
+      }
+
+      .food-image {
+        min-height: 360px;
+        border-radius: 8px;
+        background:
+          linear-gradient(rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.05)),
+          url("https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1600&q=85")
+            center / cover;
+        box-shadow: 0 24px 64px rgba(0, 0, 0, 0.24);
+      }
+
+      .food-band .lead {
+        color: rgba(255, 255, 255, 0.78);
+      }
+
+      .journal {
+        background: var(--soft);
+      }
+
+      .journal-list {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 18px;
+      }
+
+      .journal-item {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: white;
+        padding: 24px;
+      }
+
+      .journal-item span {
+        color: var(--brand-dark);
+        font-weight: 900;
+        font-size: 13px;
+      }
+
+      .journal-item h3 {
+        margin: 12px 0 8px;
+        font-size: 24px;
+      }
+
+      footer {
+        padding: 34px clamp(20px, 5vw, 72px);
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+      }
+
+      @media (max-width: 780px) {
+        .links {
+          display: none;
+        }
+
+        .grid,
+        .journal-list,
+        .food-feature {
+          grid-template-columns: 1fr;
+        }
+
+        .section-head {
+          display: block;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="nav">
+      <a class="brand" href="/">
+        <span class="mark">V</span>
+        <span>Vishal Chepuri</span>
+      </a>
+      <div class="links">
+        <a href="#products">Products</a>
+        <a href="/blog">Blog</a>
+        <a href="#food-app">Food App</a>
+        <a class="button" href="/food-app/">Open HomeBites</a>
+      </div>
+    </nav>
+
+    <main>
+      <header class="hero">
+        <div class="hero-inner">
+          <p class="eyebrow">Building useful products, one focused release at a time</p>
+          <h1>Many products are coming. Please wait and watch.</h1>
+          <p>
+            This is the home for my product experiments, notes, and practical apps.
+            The first public product is HomeBites, a food and grocery experience
+            built around local restaurants, cuisines, and everyday essentials.
+          </p>
+          <div class="hero-actions">
+            <a class="button" href="/food-app/">Open Food App</a>
+            <a class="button secondary" href="/blog">Read Blog</a>
+          </div>
+        </div>
+      </header>
+
+      <section id="products">
+        <div class="section-inner">
+          <div class="section-head">
+            <div>
+              <h2>Products in motion</h2>
+              <p class="lead">
+                I am shaping a small set of products that solve real daily needs:
+                food discovery, local commerce, personal productivity, and simple
+                tools that feel fast and dependable.
+              </p>
+            </div>
+          </div>
+
+          <div class="grid">
+            <article class="card">
+              <div
+                class="card-media"
+                style="background-image: url('https://images.unsplash.com/photo-1543353071-10c8ba85a904?auto=format&fit=crop&w=900&q=80')"
+              ></div>
+              <div class="card-body">
+                <h3>HomeBites</h3>
+                <p>
+                  A food and grocery app with cuisines, restaurants, menus, offers,
+                  carts, favorites, admin tools, and cloud deployment.
+                </p>
+                <a class="badge" href="/food-app/">Open food app</a>
+              </div>
+            </article>
+
+            <article class="card">
+              <div
+                class="card-media"
+                style="background-image: url('https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=900&q=80')"
+              ></div>
+              <div class="card-body">
+                <h3>Local commerce tools</h3>
+                <p>
+                  Inventory, orders, dashboards, and customer flows for small local
+                  sellers. Coming after the food app stabilizes.
+                </p>
+                <span class="badge">Coming soon</span>
+              </div>
+            </article>
+
+            <article class="card">
+              <div
+                class="card-media"
+                style="background-image: url('https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=900&q=80')"
+              ></div>
+              <div class="card-body">
+                <h3>Builder notes</h3>
+                <p>
+                  A written trail of what I am learning while building: deployment,
+                  cost control, product polish, and user-friendly systems.
+                </p>
+                <a class="badge" href="/blog">Read notes</a>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="food-app" class="food-band">
+        <div class="section-inner food-feature">
+          <div>
+            <p class="eyebrow">Featured product</p>
+            <h2>HomeBites food app</h2>
+            <p class="lead">
+              Browse cuisines, discover restaurants by location, view menus, add
+              groceries, manage cart items, and use an admin portal for catalog
+              updates. It is deployed on Firebase Hosting with a Cloud Run API.
+            </p>
+            <div class="hero-actions">
+              <a class="button" href="/food-app/">Open HomeBites</a>
+              <a class="button secondary" href="/food-app/chefs">Browse restaurants</a>
+            </div>
+          </div>
+          <div class="food-image" aria-label="Food app preview"></div>
+        </div>
+      </section>
+
+      <section class="journal">
+        <div class="section-inner">
+          <div class="section-head">
+            <div>
+              <h2>Blog and updates</h2>
+              <p class="lead">
+                A simple place to share progress, lessons, and what is coming next.
+              </p>
+            </div>
+            <a class="button secondary" href="/blog">Open blog</a>
+          </div>
+
+          <div class="journal-list">
+            <article class="journal-item">
+              <span>ABOUT ME</span>
+              <h3>Building calmly, shipping practically</h3>
+              <p class="lead">
+                I like products that become useful without making people think too
+                hard. My focus is practical systems, clean interfaces, and steady
+                improvements.
+              </p>
+            </article>
+            <article class="journal-item">
+              <span>NEXT</span>
+              <h3>More products are coming</h3>
+              <p class="lead">
+                HomeBites is the first public product here. More tools will appear
+                as they become real enough to use.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="section-inner">
+        © 2026 Vishal Chepuri. Built with care, iteration, and a little patience.
+      </div>
+    </footer>
+  </body>
+</html>

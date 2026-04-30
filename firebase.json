@@ -17,6 +17,10 @@
       {
         "source": "/food-app/**",
         "destination": "/food-app/index.html"
+      },
+      {
+        "source": "/blog",
+        "destination": "/blog.html"
       }
     ],
     "headers": [
