@@ -152,32 +152,30 @@ export async function listChefs(params: {
 }) {
   const cuisine = params.cuisine ? norm(params.cuisine) : null;
   const q = params.q ? norm(params.q) : null;
-  const city = params.city ? norm(params.city) : null;
-  let query: FirebaseFirestore.Query<ChefDoc> = chefs;
-
-  if (params.city) query = query.where("location", "==", params.city);
-  if (params.cuisine) query = query.where("cuisine", "==", params.cuisine);
-
   const limit = Math.min(Math.max(params.limit ?? (q ? 20 : 12), 1), 24);
-  const snap = await query.limit(limit).get();
-  return snap.docs
-    .map((d) => d.data())
-    .filter((c) => {
-      if (cuisine && norm(c.cuisine) !== cuisine) return false;
-      if (
-        city &&
-        norm(c.location) !== city &&
-        !(c.serviceAreas ?? []).some((area) => norm(area) === city)
-      ) {
-        return false;
-      }
-      if (!q) return true;
-      return (
-        norm(c.name).includes(q) ||
-        norm(c.tagline).includes(q) ||
-        norm(c.cuisine).includes(q)
-      );
-    });
+
+  async function readRows(useCity: boolean) {
+    let query: FirebaseFirestore.Query<ChefDoc> = chefs;
+    if (useCity && params.city) query = query.where("location", "==", params.city);
+    if (params.cuisine) query = query.where("cuisine", "==", params.cuisine);
+    const snap = await query.limit(limit).get();
+    return snap.docs.map((d) => d.data());
+  }
+
+  let rows = await readRows(true);
+  if (rows.length === 0 && params.city) {
+    rows = await readRows(false);
+  }
+
+  return rows.filter((c) => {
+    if (cuisine && norm(c.cuisine) !== cuisine) return false;
+    if (!q) return true;
+    return (
+      norm(c.name).includes(q) ||
+      norm(c.tagline).includes(q) ||
+      norm(c.cuisine).includes(q)
+    );
+  });
 }
 
 export async function getChefById(id: number) {
@@ -266,18 +264,29 @@ export async function searchAll(q: string) {
 }
 
 export async function getFeaturedChefs(city?: string, limit = 4) {
-  let query: FirebaseFirestore.Query<ChefDoc> = chefs.where("featured", "==", true);
-  if (city) query = query.where("location", "==", city);
-  const snap = await query.limit(Math.min(Math.max(limit, 1), 8)).get();
-  return snap.docs.map((d) => d.data()).sort((a, b) => b.rating - a.rating);
+  const cappedLimit = Math.min(Math.max(limit, 1), 8);
+  async function readRows(useCity: boolean) {
+    let query: FirebaseFirestore.Query<ChefDoc> = chefs.where("featured", "==", true);
+    if (useCity && city) query = query.where("location", "==", city);
+    const snap = await query.limit(cappedLimit).get();
+    return snap.docs.map((d) => d.data()).sort((a, b) => b.rating - a.rating);
+  }
+  const rows = await readRows(true);
+  return rows.length > 0 || !city ? rows : readRows(false);
 }
 
 export async function getPopularDishes(city?: string, limit = 6) {
-  let chefQuery: FirebaseFirestore.Query<ChefDoc> = chefs.where("featured", "==", true);
-  if (city) chefQuery = chefQuery.where("location", "==", city);
   const cappedLimit = Math.min(Math.max(limit, 1), 12);
-  const chefSnap = await chefQuery.limit(Math.min(cappedLimit, 6)).get();
-  const chefRows = chefSnap.docs.map((d) => d.data());
+  async function readChefs(useCity: boolean) {
+    let chefQuery: FirebaseFirestore.Query<ChefDoc> = chefs.where("featured", "==", true);
+    if (useCity && city) chefQuery = chefQuery.where("location", "==", city);
+    const chefSnap = await chefQuery.limit(Math.min(cappedLimit, 6)).get();
+    return chefSnap.docs.map((d) => d.data());
+  }
+  let chefRows = await readChefs(true);
+  if (chefRows.length === 0 && city) {
+    chefRows = await readChefs(false);
+  }
   const dishSnaps = await Promise.all(
     chefRows.map((chef) => dishes.where("chefId", "==", chef.id).limit(1).get()),
   );

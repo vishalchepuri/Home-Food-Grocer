@@ -60,7 +60,7 @@ jobs:
         uses: google-github-actions/setup-gcloud@v2
 
       - name: Build and push API image
-        run: gcloud builds submit --tag "$IMAGE" --project "$PROJECT_ID"
+        run: gcloud builds submit --tag "$IMAGE" --project "$PROJECT_ID" --suppress-logs
 
       - name: Deploy API to Cloud Run
         run: |

@@ -4,23 +4,33 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Star, Clock, MapPin } from "lucide-react";
 import { motion } from "framer-motion";
 import { FavoriteButton } from "@/components/FavoriteButton";
+import { useState } from "react";
 
 interface ChefCardProps {
   chef: Chef;
 }
 
 export function ChefCard({ chef }: ChefCardProps) {
+  const [imageFailed, setImageFailed] = useState(false);
+
   return (
     <Link href={`/chefs/${chef.id}`}>
       <motion.div whileHover={{ y: -4 }} transition={{ duration: 0.2 }}>
         <Card className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer h-full flex flex-col border-border/50">
           <div className="relative aspect-[4/3] overflow-hidden bg-muted">
-            <img
-              src={chef.imageUrl}
-              alt={chef.name}
-              className="object-cover w-full h-full transition-transform hover:scale-105 duration-500"
-              loading="lazy"
-            />
+            {imageFailed ? (
+              <div className="flex h-full w-full items-center justify-center bg-primary/10 p-4 text-center text-sm font-semibold text-primary">
+                {chef.cuisine}
+              </div>
+            ) : (
+              <img
+                src={chef.imageUrl}
+                alt={chef.name}
+                className="object-cover w-full h-full transition-transform hover:scale-105 duration-500"
+                loading="lazy"
+                onError={() => setImageFailed(true)}
+              />
+            )}
             {chef.isVeg && (
               <div className="absolute top-2 right-2 bg-green-50 px-2 py-0.5 rounded text-xs font-semibold border border-green-600 text-green-700 shadow-sm flex items-center gap-1">
                 <div className="w-2 h-2 rounded-full bg-green-600" />

@@ -5,6 +5,7 @@ import { Star, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { FavoriteButton } from "@/components/FavoriteButton";
+import { useState } from "react";
 
 interface DishCardProps {
   dish: Dish;
@@ -12,6 +13,7 @@ interface DishCardProps {
 }
 
 export function DishCard({ dish, showChefName = false }: DishCardProps) {
+  const [imageFailed, setImageFailed] = useState(false);
   const { items, addItem, updateQty } = useCart();
   const cartItem = items.find((i) => i.kind === "dish" && i.refId === dish.id);
   const quantity = cartItem?.quantity || 0;
@@ -68,12 +70,19 @@ export function DishCard({ dish, showChefName = false }: DishCardProps) {
       </div>
       <div className="w-[120px] shrink-0 flex flex-col items-center">
         <div className="w-full aspect-square rounded-lg overflow-hidden mb-[-16px] relative z-0">
-          <img
-            src={dish.imageUrl}
-            alt={dish.name}
-            className="w-full h-full object-cover bg-muted"
-            loading="lazy"
-          />
+          {imageFailed ? (
+            <div className="flex h-full w-full items-center justify-center bg-primary/10 p-3 text-center text-xs font-semibold text-primary">
+              {dish.name}
+            </div>
+          ) : (
+            <img
+              src={dish.imageUrl}
+              alt={dish.name}
+              className="w-full h-full object-cover bg-muted"
+              loading="lazy"
+              onError={() => setImageFailed(true)}
+            />
+          )}
           <div className="absolute top-1.5 right-1.5">
             <FavoriteButton
               size="sm"

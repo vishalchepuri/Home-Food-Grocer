@@ -3,12 +3,14 @@ import { useCart } from "@/hooks/use-cart";
 import { QuantityStepper } from "./QuantityStepper";
 import { Link } from "wouter";
 import { FavoriteButton } from "@/components/FavoriteButton";
+import { useState } from "react";
 
 interface ProductCardProps {
   product: Product;
 }
 
 export function ProductCard({ product }: ProductCardProps) {
+  const [imageFailed, setImageFailed] = useState(false);
   const { items, addItem, updateQty } = useCart();
   const cartItem = items.find((i) => i.kind === "product" && i.refId === product.id);
   const quantity = cartItem?.quantity || 0;
@@ -37,12 +39,19 @@ export function ProductCard({ product }: ProductCardProps) {
   return (
     <div className="relative flex flex-col bg-card rounded-xl border border-border/50 overflow-hidden shadow-sm h-full hover:shadow-md transition-shadow">
       <Link href={`/products/${product.id}`} className="relative aspect-square p-4 bg-muted/30 cursor-pointer block">
-        <img
-          src={product.imageUrl}
-          alt={product.name}
-          className="w-full h-full object-contain mix-blend-multiply"
-          loading="lazy"
-        />
+        {imageFailed ? (
+          <div className="flex h-full w-full items-center justify-center rounded-lg bg-primary/10 p-3 text-center text-xs font-semibold text-primary">
+            {product.name}
+          </div>
+        ) : (
+          <img
+            src={product.imageUrl}
+            alt={product.name}
+            className="w-full h-full object-contain mix-blend-multiply"
+            loading="lazy"
+            onError={() => setImageFailed(true)}
+          />
+        )}
         {discount > 0 && (
           <div className="absolute top-0 left-0 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-1 rounded-br-lg z-10">
             {discount}% OFF
