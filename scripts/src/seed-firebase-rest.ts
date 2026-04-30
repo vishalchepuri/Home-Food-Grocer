@@ -2,6 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
+import { execFileSync } from "node:child_process";
 
 const projectId = process.env.FIREBASE_PROJECT_ID ?? "my-app-a7f88";
 const storageBucket =
@@ -17,13 +18,25 @@ const tokenPath = path.join(
 );
 
 function getAccessToken() {
-  const raw = JSON.parse(fs.readFileSync(tokenPath, "utf8")) as {
-    tokens?: { access_token?: string; expires_at?: number };
-  };
-  const token = raw.tokens?.access_token;
-  if (!token) throw new Error("Firebase CLI access token not found.");
-  if (raw.tokens?.expires_at && raw.tokens.expires_at < Date.now()) {
-    throw new Error("Firebase CLI access token expired. Run firebase login again.");
+  if (process.env.FIREBASE_ACCESS_TOKEN) {
+    return process.env.FIREBASE_ACCESS_TOKEN;
+  }
+
+  if (fs.existsSync(tokenPath)) {
+    const raw = JSON.parse(fs.readFileSync(tokenPath, "utf8")) as {
+      tokens?: { access_token?: string; expires_at?: number };
+    };
+    const token = raw.tokens?.access_token;
+    if (token && (!raw.tokens?.expires_at || raw.tokens.expires_at > Date.now())) {
+      return token;
+    }
+  }
+
+  const token = execFileSync("gcloud", ["auth", "print-access-token"], {
+    encoding: "utf8",
+  }).trim();
+  if (!token) {
+    throw new Error("No Firebase CLI or gcloud access token found.");
   }
   return token;
 }
@@ -135,6 +148,40 @@ const restaurants = {
   ],
 };
 
+const allCities = [
+  "Hyderabad",
+  "Warangal",
+  "Karimnagar",
+  "Rajanna Sircilla",
+  "Nizamabad",
+  "Khammam",
+  "Bangalore",
+  "Mysore",
+  "Mangalore",
+  "Chennai",
+  "Coimbatore",
+  "Madurai",
+  "Pondicherry",
+  "Kochi",
+  "Thiruvananthapuram",
+  "Mumbai",
+  "Pune",
+  "Nagpur",
+  "Delhi",
+  "Gurgaon",
+  "Noida",
+  "Kolkata",
+  "Ahmedabad",
+  "Surat",
+  "Jaipur",
+  "Lucknow",
+  "Chandigarh",
+  "Bhubaneswar",
+  "Visakhapatnam",
+  "Vijayawada",
+  "Goa",
+];
+
 const cuisines = ["North Indian", "South Indian", "Biryani", "Chinese", "Continental", "Italian", "Mexican", "Thai", "Arabian", "Desserts", "Japanese", "Korean", "Fast Food", "Street Food", "Pizza", "Burgers", "Cafe", "Andhra", "Kerala", "Rajasthani", "Mediterranean", "Lebanese", "Turkish", "Vietnamese", "Momos", "Rolls & Wraps", "BBQ & Grill", "Breakfast", "Salads", "Juices & Shakes", "Ice Cream", "North East", "Odia", "Hyderabadi", "Punjabi", "Mughlai", "Bengali", "Healthy", "Coastal", "Gujarati", "Bakery"];
 const images = [
   "https://images.unsplash.com/photo-1556911220-bff31c812dba?w=800",
@@ -208,10 +255,15 @@ function restaurantName(city: string, cuisine: string, index: number, names: str
   return formats[index % formats.length];
 }
 
-const chefs: Row[] = Object.entries(restaurants).flatMap(([city, names], cityIndex) =>
+const chefs: Row[] = allCities.flatMap((city, cityIndex) =>
   cuisines.map((cuisine, index) => ({
     id: cityIndex * 1000 + index + 1,
-    name: restaurantName(city, cuisine, index, names),
+    name: restaurantName(
+      city,
+      cuisine,
+      index,
+      restaurants[city as keyof typeof restaurants] ?? [],
+    ),
     tagline: `Top-rated ${cuisine.toLowerCase()} meals freshly cooked in ${city}.`,
     cuisine,
     rating: Number((4.9 - (index % 5) * 0.1).toFixed(1)),

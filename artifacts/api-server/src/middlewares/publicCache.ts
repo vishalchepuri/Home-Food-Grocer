@@ -10,6 +10,7 @@ type CacheEntry = {
 
 const cache = new Map<string, CacheEntry>();
 const cacheDir = path.resolve(process.cwd(), "..", "..", ".local", "api-response-cache");
+const CACHE_VERSION = "2026-04-30-location-fill";
 
 const CACHEABLE_PREFIXES = [
   "/categories",
@@ -76,7 +77,7 @@ export function publicCache(req: Request, res: Response, next: NextFunction) {
     return;
   }
 
-  const key = req.originalUrl;
+  const key = `${CACHE_VERSION}:${req.originalUrl}`;
   const now = Date.now();
   const cached = cache.get(key) ?? readDiskCache(key, now);
   if (cached && cached.expiresAt > now) {
