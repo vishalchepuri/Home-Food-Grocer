@@ -6,7 +6,6 @@ import { useSearch } from "wouter";
 import { Search, Filter } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useState, useEffect } from "react";
-import { useDebounce } from "@/hooks/use-debounce"; // Will create or fallback to simple timeout if doesn't exist. Actually I'll use a local state.
 import { motion } from "framer-motion";
 import { useLocationCity } from "@/hooks/use-location";
 import { useQuery } from "@tanstack/react-query";
@@ -66,11 +65,16 @@ export default function ChefsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedCuisine, setSelectedCuisine] = useState(initialCategory);
+  const [loadCuisineDishes, setLoadCuisineDishes] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300);
     return () => clearTimeout(timer);
   }, [searchQuery]);
+
+  useEffect(() => {
+    setLoadCuisineDishes(false);
+  }, [selectedCuisine]);
 
   const { data: chefs, isLoading } = useListChefs({
     q: debouncedSearch || undefined,
@@ -79,7 +83,7 @@ export default function ChefsPage() {
   } as { q?: string; cuisine?: string; city?: string });
   const { data: categoryDishes, isLoading: isLoadingDishes } = useQuery<Dish[]>({
     queryKey: ["category-dishes", selectedCuisine],
-    enabled: !!selectedCuisine,
+    enabled: !!selectedCuisine && loadCuisineDishes,
     queryFn: async () => {
       const res = await fetch(apiPath(`/api/search?q=${encodeURIComponent(selectedCuisine)}`));
       const data = await res.json();
@@ -168,7 +172,17 @@ export default function ChefsPage() {
               </p>
             </div>
           </div>
-          {isLoadingDishes ? (
+          {!loadCuisineDishes ? (
+            <div className="rounded-xl border border-border bg-muted/30 p-8 text-center">
+              <button
+                type="button"
+                onClick={() => setLoadCuisineDishes(true)}
+                className="rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+              >
+                Load food items
+              </button>
+            </div>
+          ) : isLoadingDishes ? (
             <LoadingGrid count={6} type="dish" />
           ) : categoryDishes && categoryDishes.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">

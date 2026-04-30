@@ -21,6 +21,11 @@ import {
 
 const router: IRouter = Router();
 
+function readLimit(value: unknown, fallback: number, max: number) {
+  const n = typeof value === "string" ? Number(value) : Number.NaN;
+  return Number.isFinite(n) ? Math.min(Math.max(Math.floor(n), 1), max) : fallback;
+}
+
 function chefRow(c: ChefDoc) {
   return {
     id: c.id,
@@ -93,6 +98,7 @@ router.get("/chefs", async (req, res) => {
     cuisine: params.cuisine,
     q: params.q,
     city: typeof req.query.city === "string" ? req.query.city : undefined,
+    limit: readLimit(req.query.limit, 12, 24),
   });
   res.set("Cache-Control", "private, max-age=60");
   res.json(rows.map(chefRow));
@@ -117,6 +123,7 @@ router.get("/products", async (req, res) => {
     categoryId:
       params.categoryId !== undefined ? Number(params.categoryId) : undefined,
     q: params.q,
+    limit: readLimit(req.query.limit, 12, 24),
   });
   res.set("Cache-Control", "private, max-age=60");
   res.json(rows.map((r) => productRow(r.product, r.categoryName)));

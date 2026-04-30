@@ -1,7 +1,6 @@
 import { 
   useGetOffers, 
-  useListCategories, 
-  useGetGroceryEssentials 
+  useListCategories
 } from "@workspace/api-client-react";
 import { OfferCard } from "@/components/OfferCard";
 import { CategoryTile } from "@/components/CategoryTile";
@@ -15,7 +14,8 @@ import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { useLocationCity } from "@/hooks/use-location";
 import { apiPath } from "@/lib/api-path";
-import type { Chef, Dish } from "@workspace/api-client-react";
+import { useState } from "react";
+import type { Chef, Dish, Product } from "@workspace/api-client-react";
 
 function asArray<T>(value: T[] | null | undefined): T[] {
   return Array.isArray(value) ? value : [];
@@ -23,23 +23,34 @@ function asArray<T>(value: T[] | null | undefined): T[] {
 
 export default function Home() {
   const { city } = useLocationCity();
+  const [showAllCategories, setShowAllCategories] = useState(false);
+  const [loadPopularDishes, setLoadPopularDishes] = useState(false);
+  const [loadGroceries, setLoadGroceries] = useState(false);
   const { data: offers, isLoading: isLoadingOffers } = useGetOffers();
   const { data: categories, isLoading: isLoadingCategories } = useListCategories();
   const { data: featuredChefs, isLoading: isLoadingChefs } = useQuery<Chef[]>({
     queryKey: ["featured-chefs", city],
     queryFn: () =>
-      fetch(apiPath(`/api/dashboard/featured-chefs?city=${encodeURIComponent(city)}`)).then((res) =>
+      fetch(apiPath(`/api/dashboard/featured-chefs?city=${encodeURIComponent(city)}&limit=4`)).then((res) =>
         res.json(),
       ),
   });
   const { data: popularDishes, isLoading: isLoadingDishes } = useQuery<Dish[]>({
     queryKey: ["popular-dishes", city],
+    enabled: loadPopularDishes,
     queryFn: () =>
-      fetch(apiPath(`/api/dashboard/popular-dishes?city=${encodeURIComponent(city)}`)).then((res) =>
+      fetch(apiPath(`/api/dashboard/popular-dishes?city=${encodeURIComponent(city)}&limit=6`)).then((res) =>
         res.json(),
       ),
   });
-  const { data: groceryEssentials, isLoading: isLoadingGroceries } = useGetGroceryEssentials();
+  const { data: groceryEssentials, isLoading: isLoadingGroceries } = useQuery<Product[]>({
+    queryKey: ["grocery-essentials", 8],
+    enabled: loadGroceries,
+    queryFn: () =>
+      fetch(apiPath("/api/dashboard/grocery-essentials?limit=8")).then((res) =>
+        res.json(),
+      ),
+  });
 
   const offersList = asArray(offers);
   const categoriesList = asArray(categories);
@@ -49,6 +60,9 @@ export default function Home() {
 
   const homeFoodCategories = categoriesList.filter(c => c.kind === "home_food");
   const groceryCategories = categoriesList.filter(c => c.kind === "grocery");
+  const visibleHomeFoodCategories = showAllCategories
+    ? homeFoodCategories
+    : homeFoodCategories.slice(0, 12);
 
   return (
     <div className="flex flex-col gap-10 pb-20">
@@ -80,11 +94,22 @@ export default function Home() {
             </div>
           ) : (
             <div className="grid grid-cols-3 gap-x-5 gap-y-6 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10">
-              {homeFoodCategories.map((category) => (
+              {visibleHomeFoodCategories.map((category) => (
                 <CategoryTile key={category.id} category={category} />
               ))}
             </div>
           )}
+          {!isLoadingCategories && homeFoodCategories.length > visibleHomeFoodCategories.length ? (
+            <div className="mt-6 flex justify-center">
+              <button
+                type="button"
+                onClick={() => setShowAllCategories(true)}
+                className="rounded-full border border-border bg-card px-5 py-2 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-muted"
+              >
+                Load more cuisines
+              </button>
+            </div>
+          ) : null}
         </div>
       </section>
 
@@ -115,7 +140,17 @@ export default function Home() {
       <section>
         <div className="container mx-auto px-4">
           <h2 className="font-display font-bold text-2xl mb-6">Popular Right Now</h2>
-          {isLoadingDishes ? (
+          {!loadPopularDishes ? (
+            <div className="rounded-xl border border-border bg-muted/30 p-8 text-center">
+              <button
+                type="button"
+                onClick={() => setLoadPopularDishes(true)}
+                className="rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+              >
+                Load popular dishes
+              </button>
+            </div>
+          ) : isLoadingDishes ? (
             <LoadingGrid count={6} type="dish" />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -152,7 +187,17 @@ export default function Home() {
             ))}
           </div>
 
-          {isLoadingGroceries ? (
+          {!loadGroceries ? (
+            <div className="rounded-xl border border-border bg-muted/30 p-8 text-center">
+              <button
+                type="button"
+                onClick={() => setLoadGroceries(true)}
+                className="rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+              >
+                Load daily essentials
+              </button>
+            </div>
+          ) : isLoadingGroceries ? (
             <LoadingGrid count={6} />
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">

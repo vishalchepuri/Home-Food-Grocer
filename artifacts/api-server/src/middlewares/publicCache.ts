@@ -25,9 +25,9 @@ const CACHEABLE_PREFIXES = [
 function ttlForPath(path: string) {
   if (path === "/categories") return 24 * 60 * 60 * 1000;
   if (path === "/dashboard/offers") return 24 * 60 * 60 * 1000;
-  if (path.startsWith("/dashboard/")) return 60 * 60 * 1000;
-  if (path.startsWith("/search")) return 30 * 60 * 1000;
-  return 60 * 60 * 1000;
+  if (path.startsWith("/dashboard/")) return 6 * 60 * 60 * 1000;
+  if (path.startsWith("/search")) return 2 * 60 * 60 * 1000;
+  return 6 * 60 * 60 * 1000;
 }
 
 function isCacheable(req: Request) {
@@ -81,7 +81,7 @@ export function publicCache(req: Request, res: Response, next: NextFunction) {
   const cached = cache.get(key) ?? readDiskCache(key, now);
   if (cached && cached.expiresAt > now) {
     res.set("X-HomeBites-Cache", "hit");
-    res.set("Cache-Control", "private, max-age=1800");
+    res.set("Cache-Control", "private, max-age=21600");
     res.json(cached.body);
     return;
   }
@@ -93,7 +93,7 @@ export function publicCache(req: Request, res: Response, next: NextFunction) {
       cache.set(key, entry);
       writeDiskCache(key, entry);
       res.set("X-HomeBites-Cache", "miss");
-      res.set("Cache-Control", "private, max-age=1800");
+      res.set("Cache-Control", "private, max-age=21600");
     }
     return originalJson(body);
   };

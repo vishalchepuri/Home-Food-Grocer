@@ -144,7 +144,12 @@ export async function listCategories() {
   return snap.docs.map((d) => d.data());
 }
 
-export async function listChefs(params: { cuisine?: string; q?: string; city?: string }) {
+export async function listChefs(params: {
+  cuisine?: string;
+  q?: string;
+  city?: string;
+  limit?: number;
+}) {
   const cuisine = params.cuisine ? norm(params.cuisine) : null;
   const q = params.q ? norm(params.q) : null;
   const city = params.city ? norm(params.city) : null;
@@ -153,7 +158,8 @@ export async function listChefs(params: { cuisine?: string; q?: string; city?: s
   if (params.city) query = query.where("location", "==", params.city);
   if (params.cuisine) query = query.where("cuisine", "==", params.cuisine);
 
-  const snap = await query.limit(q ? 80 : 40).get();
+  const limit = Math.min(Math.max(params.limit ?? (q ? 20 : 12), 1), 24);
+  const snap = await query.limit(limit).get();
   return snap.docs
     .map((d) => d.data())
     .filter((c) => {
@@ -186,13 +192,18 @@ export async function getChefById(id: number) {
   };
 }
 
-export async function listProducts(params: { categoryId?: number; q?: string }) {
+export async function listProducts(params: {
+  categoryId?: number;
+  q?: string;
+  limit?: number;
+}) {
   const q = params.q ? norm(params.q) : null;
   let prodQuery: FirebaseFirestore.Query<ProductDoc> = products;
   if (params.categoryId !== undefined) {
     prodQuery = prodQuery.where("categoryId", "==", params.categoryId);
   }
-  const prodSnap = await prodQuery.limit(q ? 80 : 40).get();
+  const limit = Math.min(Math.max(params.limit ?? (q ? 20 : 12), 1), 24);
+  const prodSnap = await prodQuery.limit(limit).get();
   const productRows = prodSnap.docs
     .map((d) => d.data())
     .filter((p) => {
@@ -224,7 +235,7 @@ export async function getProductById(id: number) {
 
 export async function searchAll(q: string) {
   const query = norm(q);
-  const chefRows = await chefs.where("cuisine", "==", q).limit(30).get();
+  const chefRows = await chefs.where("cuisine", "==", q).limit(8).get();
 
   const chefsFound = chefRows.docs
     .map((d) => d.data())
@@ -235,8 +246,8 @@ export async function searchAll(q: string) {
     chefNameById.set(c.id, c.name);
   }
   const dishSnaps = await Promise.all(
-    chefsFound.slice(0, 12).map((chef) =>
-      dishes.where("chefId", "==", chef.id).limit(4).get(),
+    chefsFound.slice(0, 6).map((chef) =>
+      dishes.where("chefId", "==", chef.id).limit(2).get(),
     ),
   );
 
@@ -244,7 +255,7 @@ export async function searchAll(q: string) {
     .flatMap((snap) => snap.docs.map((d) => d.data()))
     .map((dish) => ({ dish, chefName: chefNameById.get(dish.chefId) ?? "" }));
 
-  const productSnap = await products.limit(30).get();
+  const productSnap = await products.limit(12).get();
   const productsFound = productSnap.docs
     .map((d) => d.data())
     .filter((p) => norm(p.name).includes(query))
@@ -254,25 +265,26 @@ export async function searchAll(q: string) {
   return { chefsFound, dishesFound, productsFound };
 }
 
-export async function getFeaturedChefs(city?: string) {
+export async function getFeaturedChefs(city?: string, limit = 4) {
   let query: FirebaseFirestore.Query<ChefDoc> = chefs.where("featured", "==", true);
   if (city) query = query.where("location", "==", city);
-  const snap = await query.limit(12).get();
+  const snap = await query.limit(Math.min(Math.max(limit, 1), 8)).get();
   return snap.docs.map((d) => d.data()).sort((a, b) => b.rating - a.rating);
 }
 
-export async function getPopularDishes(city?: string) {
+export async function getPopularDishes(city?: string, limit = 6) {
   let chefQuery: FirebaseFirestore.Query<ChefDoc> = chefs.where("featured", "==", true);
   if (city) chefQuery = chefQuery.where("location", "==", city);
-  const chefSnap = await chefQuery.limit(12).get();
+  const cappedLimit = Math.min(Math.max(limit, 1), 12);
+  const chefSnap = await chefQuery.limit(Math.min(cappedLimit, 6)).get();
   const chefRows = chefSnap.docs.map((d) => d.data());
   const dishSnaps = await Promise.all(
-    chefRows.map((chef) => dishes.where("chefId", "==", chef.id).limit(2).get()),
+    chefRows.map((chef) => dishes.where("chefId", "==", chef.id).limit(1).get()),
   );
   const chefById = new Map(chefRows.map((chef) => [chef.id, chef]));
   return dishSnaps
     .flatMap((snap) => snap.docs.map((d) => d.data()))
-    .slice(0, 12)
+    .slice(0, cappedLimit)
     .map((dish) => {
       const chef = chefById.get(dish.chefId);
       return {
@@ -284,8 +296,11 @@ export async function getPopularDishes(city?: string) {
     });
 }
 
-export async function getGroceryEssentials() {
-  const prodSnap = await products.where("essential", "==", true).limit(18).get();
+export async function getGroceryEssentials(limit = 8) {
+  const prodSnap = await products
+    .where("essential", "==", true)
+    .limit(Math.min(Math.max(limit, 1), 18))
+    .get();
   const categoryIds = Array.from(
     new Set(prodSnap.docs.map((d) => d.data().categoryId)),
   );
