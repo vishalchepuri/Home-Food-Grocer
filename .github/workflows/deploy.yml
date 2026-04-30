@@ -1,0 +1,101 @@
+name: Deploy HomeBites
+
+on:
+  push:
+    branches:
+      - codex/food-app-hosting
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-homebites
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    env:
+      PROJECT_ID: my-app-a7f88
+      REGION: us-central1
+      REPOSITORY: homebites
+      SERVICE: homebites-api
+      IMAGE: us-central1-docker.pkg.dev/my-app-a7f88/homebites/homebites-api
+      BASE_PATH: /food-app/
+      PORT: 5173
+      API_PORT: 8080
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.20.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm run typecheck
+
+      - name: Build frontend
+        run: pnpm --filter "./artifacts/homebites" run build
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Ensure Google APIs
+        run: |
+          gcloud services enable \
+            run.googleapis.com \
+            cloudbuild.googleapis.com \
+            artifactregistry.googleapis.com \
+            firebasehosting.googleapis.com \
+            firestore.googleapis.com \
+            firebasestorage.googleapis.com \
+            --project "$PROJECT_ID"
+
+      - name: Ensure Artifact Registry repository
+        run: |
+          gcloud artifacts repositories describe "$REPOSITORY" \
+            --location "$REGION" \
+            --project "$PROJECT_ID" ||
+          gcloud artifacts repositories create "$REPOSITORY" \
+            --repository-format docker \
+            --location "$REGION" \
+            --description "HomeBites containers" \
+            --project "$PROJECT_ID"
+
+      - name: Build and push API image
+        run: gcloud builds submit --tag "$IMAGE" --project "$PROJECT_ID"
+
+      - name: Deploy API to Cloud Run
+        run: |
+          gcloud run deploy "$SERVICE" \
+            --image "$IMAGE:latest" \
+            --region "$REGION" \
+            --project "$PROJECT_ID" \
+            --allow-unauthenticated \
+            --min-instances 0 \
+            --max-instances 2 \
+            --memory 512Mi \
+            --cpu 1 \
+            --update-env-vars "FIREBASE_PROJECT_ID=$PROJECT_ID,FIREBASE_STORAGE_BUCKET=my-app-a7f88.firebasestorage.app"
+
+      - name: Deploy Firebase Hosting and rules
+        run: pnpm dlx firebase-tools deploy --only hosting,firestore:rules,storage --project "$PROJECT_ID"
